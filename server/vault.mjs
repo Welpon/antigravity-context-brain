@@ -79,6 +79,96 @@ function parseFrontmatter(raw) {
   return { meta, body: match[2].trim() };
 }
 
+const AGENTS_TR_CONTENT = `# Antigravity Beyin — Hafıza Sekmesi Rehberi
+
+Bu klasör (\`~/Antigravity-Beyin\`), tüm notlarını, kararlarını, görevlerini ve kaynaklarını düz Markdown (\`.md\`) dosyaları olarak saklayan **taşınabilir hafıza kasandır**. Antigravity dışında **Claude Code, Codex, Cursor, Obsidian** veya herhangi bir metin editörüyle de doğrudan açıp kullanabilirsin.
+
+---
+
+## Hafıza Sekmesindeki Tüm İşlevler
+
+### 1. 💾 Oturum Kaydet (\`oturumlar/\`)
+- **Ne işe yarar?** Uzun bir çalışmayı bitirirken veya yeni bir sohbet açmadan önce **kaldığın yerden devam edebilmeni** sağlar.
+- **Neler kaydedilir?** Başlık, **Son İşin Sonucu**, **Açık Konular** ve **Sonraki Adım**.
+- **Nasıl kullanılır?** Yeni bir sohbet açtığında oturum kartındaki **\`📎 Bağlama Ekle\`** veya **\`↗ Gönder\`** butonuna bas; asistan bıraktığın yerden anında devam eder.
+
+### 2. ✅ Görev Ekle (\`gorevler/\`)
+- **Ne işe yarar?** Sohbetler ve günler arasında unutmak istemediğin yapılacak işleri takip eder.
+- **Neler kaydedilir?** Görev başlığı, öncelik (\`Yüksek / Normal / Düşük\`) ve detay notları.
+- **Nasıl kullanılır?** İşini bitirdiğinde **\`☐ Tamamla\`** butonuna basarak **\`☑ Tamamlandı\`** durumuna geçirebilirsin.
+
+### 3. 🧭 Karar Ekle (\`kararlar/\`)
+- **Ne işe yarar?** *"Neden bu aracı / dili / tasarımı seçmiştik?"* sorusunu haftalar sonra bile kaynağından bulabilmeni sağlar.
+- **Neler kaydedilir?** Karar başlığı, **Alınan Karar**, **Gerekçe** ve aranabilir etiketler.
+
+### 4. ⚡ Yakala (\`gelen-kutusu/\`)
+- **Ne işe yarar?** Karşına çıkan bir **video, makale, dosya veya fikri** kaybetmeden gelen kutuna almanı sağlar.
+- **İpucu:** Biriken kaynakları düzenlemek istediğinde sohbete ***"Yakalananları işle"*** yazabilirsin.
+
+### 5. 📦 Paket Ekle (Çoklu Dosya & Kural Paketleri)
+- **Ne işe yarar?** Bilgisayarındaki **birden fazla mevcut proje dosyasını** ve sabit kurallarını tek şablonda gruplar; her kullandığında dosyaların güncel halini okuyup tek tıkla sohbete yükler.
+
+### 6. 🔍 Akıllı Arama & Kart İşlemleri
+- **Akıllı Arama:** *"Projede hangi dili seçmiştik neden?"* gibi doğal Türkçe/İngilizce sorulardan dolgu kelimelerini ayıklayıp en alakalı notu en üste getirir.
+- **\`📂 Dosyayı Aç\`:** İlgili \`.md\` dosyasını doğrudan Antigravity yan panelinde açar.
+- **\`📎 Bağlama Ekle\`:** Notu veya paketi bir sonraki mesajının arkasına gizli bağlam olarak iliştirir.
+- **\`↗ Gönder\`:** Notu veya paketi anında sohbete referans mesajı olarak gönderir.
+
+## Sohbetten Kullanabileceğin Komutlar
+- ***"Beni tanı"*** — Çalışma tarzını öğrenip hafızana kaydeder.
+- ***"Bu oturumu hafızaya kaydet"*** — Sonucu, açık konuları ve sonraki adımı \`oturumlar/\` altına yazar.
+- ***"Yakalananları işle"*** — \`gelen-kutusu/\` kayıtlarını özetleyip düzenlemene yardım eder.
+- ***"Hafızamı kontrol et"*** — Eski notları ve açık görevleri onayınla gözden geçirir.
+
+## Yedekleme
+Bu klasörü doğrudan kopyalayabilir, Google Drive / OneDrive ile eşitleyebilir veya özel bir Git deposuna yedekleyebilirsin.
+`;
+
+const AGENTS_EN_CONTENT = `# Antigravity Brain — Memory Tab Guide
+
+This folder (\`~/Antigravity-Beyin\`) is your **portable memory vault**, storing all notes, decisions, tasks, and captured resources as plain Markdown (\`.md\`) files. You can open and share it directly with **Claude Code, Codex, Cursor, Obsidian**, or any text editor.
+
+---
+
+## Memory Tab Features
+
+### 1. 💾 Save Handoff (\`oturumlar/\`)
+- **What it does:** Lets you **pick up right where you left off** in a brand-new conversation.
+- **What it saves:** Title, **Outcome / Summary**, **Open Items**, and **Next Step**.
+- **How to use:** In a new chat, click **\`📎 Attach Context\`** or **\`↗ Send\`** on the handoff card so the assistant immediately continues your work.
+
+### 2. ✅ Add Task (\`gorevler/\`)
+- **What it does:** Tracks to-dos across sessions and days.
+- **What it saves:** Task title, priority (\`High / Normal / Low\`), and notes.
+- **How to use:** Click **\`☐ Mark Done\`** on a task card to toggle it to **\`☑ Done\`** (updates the Markdown checkbox to \`[x]\`).
+
+### 3. 🧭 Decision (\`kararlar/\`)
+- **What it does:** Records *why* you chose a specific tool, language, or design so you can find the exact source weeks later.
+- **What it saves:** Decision title, **Decision**, **Rationale**, and searchable tags.
+
+### 4. ⚡ Capture (\`gelen-kutusu/\`)
+- **What it does:** Quickly saves a **video, article, file, or idea** into your inbox without losing focus.
+- **Tip:** Say ***"Process my inbox"*** in chat to turn captured items into structured decisions or tasks.
+
+### 5. 📦 Add Pack (Multi-File & Rule Bundles)
+- **What it does:** Groups **multiple local project files** and reusable rules into one pack; reads live file contents and calculates token cost before attaching in one click.
+
+### 6. 🔍 Smart Search & Card Actions
+- **Smart Search:** Strips natural question filler words (in both English and Turkish) and ranks matching notes by relevance.
+- **\`📂 Open File\`:** Opens the exact \`.md\` file directly in Antigravity's side pane.
+- **\`📎 Attach Context\`:** Attaches the note or pack as pending context to your next message.
+- **\`↗ Send\`:** Sends the note or pack directly into the current chat.
+
+## Useful Chat Prompts
+- ***"Get to know me"*** — Asks a few short questions and saves your preferences to memory.
+- ***"Save this session to memory"*** — Summarizes outcome, open items, and next step into \`oturumlar/\`.
+- ***"Process my inbox"*** — Reviews items in \`gelen-kutusu/\` and helps organize them.
+- ***"Audit my memory"*** — Reviews open tasks and older notes (never modifies without your approval).
+
+## Backup
+Copy this folder anywhere, sync it via Google Drive / OneDrive, or back it up to a private Git repository.
+`;
+
 export class MemoryVault {
   constructor(vaultDir = process.env.ANTIGRAVITY_VAULT_DIR || DEFAULT_VAULT_DIR) {
     this.vaultDir = vaultDir;
@@ -92,25 +182,11 @@ export class MemoryVault {
     }
     const agentsPath = path.join(this.vaultDir, 'AGENTS.md');
     if (!fs.existsSync(agentsPath)) {
-      fs.writeFileSync(
-        agentsPath,
-        [
-          '# Antigravity Beyin — Hafıza Sekmesi Rehberi',
-          '',
-          'Bu klasör tüm yapay zekâ istemcileriyle (Antigravity, Claude Code, Codex, Cursor, Obsidian) uyumlu düz Markdown notlarını içerir.',
-          '',
-          '## Klasör Yapısı',
-          '- `oturumlar/` — Oturum devir notları (son işin sonucu, açık konular, sonraki adım).',
-          '- `gorevler/` — Oturumlar arası takip edilen yapılacak görevler.',
-          '- `kararlar/` — Alınan teknik ve ürün kararları ile gerekçeleri.',
-          '- `gelen-kutusu/` — Hızlı Yakala ile kaydedilen video, makale, dosya ve not kaynakları.',
-          '',
-          '## Yedekleme',
-          'Bu klasörü doğrudan kopyalayabilir, bulut sürücüsüyle eşitleyebilir veya özel bir Git deposuna yedekleyebilirsiniz.',
-          '',
-        ].join('\n'),
-        'utf8'
-      );
+      fs.writeFileSync(agentsPath, AGENTS_TR_CONTENT, 'utf8');
+    }
+    const agentsEnPath = path.join(this.vaultDir, 'AGENTS.en.md');
+    if (!fs.existsSync(agentsEnPath)) {
+      fs.writeFileSync(agentsEnPath, AGENTS_EN_CONTENT, 'utf8');
     }
   }
 
@@ -121,7 +197,12 @@ export class MemoryVault {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         this._collectMarkdownFiles(full, acc);
-      } else if (entry.isFile() && /\.md$/i.test(entry.name) && entry.name.toUpperCase() !== 'AGENTS.MD') {
+      } else if (
+        entry.isFile() &&
+        /\.md$/i.test(entry.name) &&
+        entry.name.toUpperCase() !== 'AGENTS.MD' &&
+        entry.name.toUpperCase() !== 'AGENTS.EN.MD'
+      ) {
         acc.push(full);
       }
     }
@@ -200,6 +281,7 @@ export class MemoryVault {
     return {
       vaultDir: this.vaultDir,
       agentsFileUri: toFileUri(path.join(this.vaultDir, 'AGENTS.md')),
+      agentsEnFileUri: toFileUri(path.join(this.vaultDir, 'AGENTS.en.md')),
       counts,
       items: filtered.slice(0, limit).map(({ mtimeMs, ...rest }) => rest),
     };

@@ -1743,7 +1743,13 @@ function renderMemory() {
         <div class="vault-path" title="${esc(v?.vaultDir || '')}">📁 ${esc(v?.vaultDir || '~/Antigravity-Beyin')}</div>
         <div class="vault-hint">${esc(t('vaultHint'))}</div>
       </div>
-      ${v?.agentsFileUri ? `<button id="btnOpenAgents" class="btn btn-sm" data-uri="${esc(v.agentsFileUri)}">${esc(t('openAgents'))}</button>` : ''}
+      ${
+        v?.agentsFileUri
+          ? `<button id="btnOpenAgents" class="btn btn-sm" data-uri="${esc(
+              state.lang === 'en' ? v.agentsEnFileUri || v.agentsFileUri : v.agentsFileUri
+            )}">${esc(t('openAgents'))}</button>`
+          : ''
+      }
     </div>
 
     ${attachedBanner}

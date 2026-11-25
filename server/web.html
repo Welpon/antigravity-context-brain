@@ -254,6 +254,39 @@
       font-size: 10.5px; background: var(--card-2); color: var(--fg-2);
       padding: 1px 6px; border-radius: 4px; margin-right: 6px;
     }
+    .timeline-main { display: flex; align-items: stretch; gap: 10px; }
+    .area-svg { flex: 1; min-width: 0; height: 150px; display: block; }
+    .timeline-yaxis {
+      display: flex; flex-direction: column; justify-content: space-between;
+      align-items: flex-end; font-family: var(--mono); font-size: 11px;
+      color: var(--fg-3); min-width: 44px; padding: 2px 0;
+    }
+    .timeline-xaxis {
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+      padding-right: 54px; margin-top: 4px;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+    .stacked-bar {
+      display: flex; width: 100%; height: 9px; border-radius: 999px;
+      overflow: hidden; background: var(--card-2); gap: 1px;
+    }
+    .legend-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px;
+    }
+    .legend-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 9px; border-radius: 6px; background: var(--sidebar);
+      font-size: 12px; color: var(--fg-2);
+    }
+    .legend-item strong { color: var(--fg); font-family: var(--mono); font-size: 11.5px; }
+    .heavy-row {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+      padding: 8px 10px; border-radius: 7px; background: var(--sidebar);
+    }
+    .heavy-head { font-size: 12px; font-weight: 600; color: var(--fg); }
+    .heavy-desc { font-size: 11.5px; color: var(--fg-2); margin-top: 2px; }
+    .heavy-tok { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--fg-2); flex-shrink: 0; }
 
     /* Modal */
     .modal-backdrop {
@@ -329,6 +362,20 @@
         output: 'Output',
         turns: 'Turns',
         topSpikes: 'Top Spikes',
+        timeline: 'Timeline',
+        totalLabel: 'Total',
+        heaviestSteps: 'Heaviest Steps',
+        breakdown: 'Category Breakdown',
+        catSystem: 'System',
+        catTools: 'Tools',
+        catUser: 'User',
+        catModel: 'Model',
+        catThinking: 'Thinking',
+        justNow: 'just now',
+        secAgo: (n) => `${n}s ago`,
+        minAgo: (n) => `${n}m ago`,
+        hrAgo: (n) => `${n}h ago`,
+        dayAgo: (n) => `${n}d ago`,
         toolsUnit: 'tools',
         memoryTitle: 'Memory Vault',
         memorySub: 'Sessions, decisions, inbox captures, and tasks stored as Markdown.',
@@ -377,6 +424,20 @@
         output: 'Çıktı',
         turns: 'Tur',
         topSpikes: 'En Büyük Sıçramalar',
+        timeline: 'Zaman Çizelgesi',
+        totalLabel: 'Toplam',
+        heaviestSteps: 'En Ağır Adımlar',
+        breakdown: 'Kategori Dağılımı',
+        catSystem: 'Sistem',
+        catTools: 'Araçlar',
+        catUser: 'Kullanıcı',
+        catModel: 'Model',
+        catThinking: 'Düşünme',
+        justNow: 'az önce',
+        secAgo: (n) => `${n}s önce`,
+        minAgo: (n) => `${n}dk önce`,
+        hrAgo: (n) => `${n}sa önce`,
+        dayAgo: (n) => `${n}g önce`,
         toolsUnit: 'araç',
         memoryTitle: 'Hafıza Kasası',
         memorySub: 'Oturumlar, kararlar, yakalananlar ve görevler düz Markdown olarak saklanır.',
@@ -414,12 +475,126 @@
     function localizeLabel(label) {
       if (!label) return '';
       let text = String(label);
-      if (state.lang !== 'tr') return text;
+      if (state.lang === 'en') {
+        return text
+          .replace(/^Model \+ Araçlar /, 'Model + Tools ')
+          .replace(/^Kullanıcı Mesajı$/, 'User Message')
+          .replace(/^Araç Çıktısı$/, 'Tool Output')
+          .replace(/^Sistem Mesajı$/, 'System Message')
+          .replace(/^Model Yanıtı$/, 'Model Response');
+      }
       text = text.replace(/^user · /, 'Kullanıcı · ');
       for (const [raw, trName] of Object.entries(TOOL_LABELS_TR)) {
         text = text.replace(new RegExp(`\\b${raw}\\b`, 'g'), trName);
       }
       return text;
+    }
+
+    function fmtRel(iso) {
+      if (!iso) return '';
+      const diff = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+      if (diff < 5) return t('justNow');
+      if (diff < 60) return t('secAgo')(diff);
+      const m = Math.floor(diff / 60);
+      if (m < 60) return t('minAgo')(m);
+      const h = Math.floor(m / 60);
+      if (h < 24) return t('hrAgo')(h);
+      return t('dayAgo')(Math.floor(h / 24));
+    }
+
+    function humanizeWebPreview(preview) {
+      const isTr = state.lang === 'tr';
+      if (!preview || preview === '__desc:empty') return isTr ? 'Boş adım çıktısı.' : 'Empty step output.';
+      const str = String(preview);
+      if (!str.startsWith('__desc:')) return str.length > 100 ? `${str.slice(0, 99)}…` : str;
+      const parts = str.slice(7).split('|');
+      const kind = parts[0];
+      if (kind === 'actions') {
+        const rawItems = (parts[1] || '').split(';').filter(Boolean);
+        const groups = new Map();
+        for (const entry of rawItems) {
+          const ci = entry.indexOf(':');
+          const tool = ci === -1 ? entry : entry.slice(0, ci);
+          const target = ci === -1 ? '' : entry.slice(ci + 1);
+          if (!groups.has(tool)) groups.set(tool, []);
+          groups.get(tool).push(target);
+        }
+        const fmtList = (arr) => {
+          const u = [...new Set(arr.filter(Boolean))];
+          if (!u.length) return '';
+          if (u.length === 1) return u[0];
+          return `${u.slice(0, -1).join(', ')}${isTr ? ' ve ' : ' and '}${u[u.length - 1]}`;
+        };
+        const clauses = [];
+        for (const [tool, targets] of groups.entries()) {
+          const names = fmtList(targets);
+          const cnt = targets.length;
+          const uLen = new Set(targets.filter(Boolean)).size;
+          if (tool === 'write_file') clauses.push(isTr ? (names ? `${names} ${uLen > 1 ? 'dosyaları' : 'dosyası'} güncellendi` : `${cnt} dosya oluşturuldu`) : (names ? `Updated ${names}` : `Created ${cnt} file(s)`));
+          else if (tool === 'edit_file') clauses.push(isTr ? (names ? `${names} düzenlendi` : `${cnt} dosya düzenlendi`) : (names ? `Edited ${names}` : `Edited ${cnt} file(s)`));
+          else if (tool === 'read_file') clauses.push(isTr ? (cnt > 1 && uLen === 1 ? `${cnt} adet ${targets[0]} belgesi incelendi` : (names ? `${names} incelendi` : `${cnt} belge incelendi`)) : (names ? `Reviewed ${names}` : `Reviewed ${cnt} file(s)`));
+          else if (tool === 'run_command') clauses.push(isTr ? 'sistem kontrolü/derleme çalıştırıldı' : 'ran a build/check command');
+          else clauses.push(isTr ? `${localizeLabel(tool)} işlemi yapıldı` : `ran ${tool}`);
+        }
+        const s = clauses.join(', ');
+        const out = s ? s.charAt(0).toUpperCase() + s.slice(1) + '.' : (isTr ? 'Planlanan adımlar tamamlandı.' : 'Completed planned actions.');
+        return out.length > 100 ? `${out.slice(0, 99)}…` : out;
+      }
+      if (kind === 'read_lines') return isTr ? `Belgeden toplam ${parts[1]} satırlık içerik okunup incelendi.` : `Read and reviewed ${parts[1]} lines from a document.`;
+      if (kind === 'cmd_exit') return isTr ? (parts[1] === '0' ? 'Çalıştırılan işlem sorunsuz tamamlandı.' : 'Çalıştırılan işlem hata ile sonlandı.') : (parts[1] === '0' ? 'The command completed successfully.' : 'The command finished with an error.');
+      if (kind === 'file_edit') return isTr ? `${parts[2]} üzerinde ${parts[1]} düzenleme uygulandı.` : `Applied ${parts[1]} edit(s) to ${parts[2]}.`;
+      if (kind === 'file_created') return isTr ? 'Yeni dosya başarıyla oluşturuldu.' : 'New file was created successfully.';
+      return isTr ? 'İşlem tamamlandı.' : 'Action completed.';
+    }
+
+    function renderWebTimeline(timeline, firstStep, lastStep) {
+      if (!timeline || !timeline.length) return `<div style="color:var(--fg-3);">${esc(t('noItems'))}</div>`;
+      const w = 640, h = 150, padL = 2, padR = 6, padT = 8, padB = 4;
+      const plotW = w - padL - padR, plotH = h - padT - padB;
+      const maxTok = Math.max(...timeline.map((x) => x.contextTokens || 0), 1);
+      const pts = timeline.map((item, i) => {
+        const x = timeline.length === 1 ? padL + plotW : padL + (i / (timeline.length - 1)) * plotW;
+        const yTotal = padT + plotH - ((item.contextTokens || 0) / maxTok) * plotH;
+        const yCache = padT + plotH - ((item.cacheReadTokens || 0) / maxTok) * plotH;
+        return { x, yTotal, yCache, item };
+      });
+      const totalD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.yTotal.toFixed(1)}`).join(' ');
+      const cacheD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.yCache.toFixed(1)}`).join(' ');
+      const areaD = `${cacheD} L ${pts[pts.length - 1].x.toFixed(1)} ${(padT + plotH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(padT + plotH).toFixed(1)} Z`;
+      const last = pts[pts.length - 1];
+      return `
+        <div class="timeline-main">
+          <svg class="area-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="wCacheGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#4f8cff" stop-opacity="0.34"/>
+                <stop offset="100%" stop-color="#4f8cff" stop-opacity="0.03"/>
+              </linearGradient>
+            </defs>
+            <line x1="${padL}" y1="${padT}" x2="${padL + plotW}" y2="${padT}" stroke="currentColor" stroke-opacity="0.09" stroke-dasharray="2,3" vector-effect="non-scaling-stroke" />
+            <line x1="${padL}" y1="${padT + plotH / 2}" x2="${padL + plotW}" y2="${padT + plotH / 2}" stroke="currentColor" stroke-opacity="0.09" stroke-dasharray="2,3" vector-effect="non-scaling-stroke" />
+            <line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="currentColor" stroke-opacity="0.16" vector-effect="non-scaling-stroke" />
+            <path d="${areaD}" fill="url(#wCacheGrad)" />
+            <path d="${cacheD}" fill="none" stroke="#4f8cff" stroke-width="1.6" vector-effect="non-scaling-stroke" />
+            <path d="${totalD}" fill="none" stroke="#22c55e" stroke-width="2" vector-effect="non-scaling-stroke" />
+            <ellipse cx="${last.x.toFixed(1)}" cy="${last.yTotal.toFixed(1)}" rx="3.2" ry="3.4" fill="#22c55e" />
+          </svg>
+          <div class="timeline-yaxis">
+            <span>${esc(fmtCompact(maxTok))}</span>
+            <span>${esc(fmtCompact(maxTok / 2))}</span>
+            <span>0</span>
+          </div>
+        </div>
+        <div class="timeline-xaxis">
+          <span>#${firstStep}</span>
+          <span>
+            <span class="dot" style="background:#22c55e;"></span>${esc(t('totalLabel'))}
+            &nbsp;&nbsp;
+            <span class="dot" style="background:#4f8cff;"></span>${esc(t('cache'))}
+          </span>
+          <span>#${lastStep}</span>
+        </div>
+      `;
     }
 
     const COL_ORDER = ['inbox', 'active', 'waiting', 'done', 'cancelled'];
@@ -648,11 +823,27 @@
         })
         .join('');
 
+      const heaviestHtml = (a.heaviestSteps || [])
+        .map((s) => `
+          <div class="heavy-row">
+            <div style="min-width:0;flex:1;">
+              <div class="heavy-head"><span style="color:var(--fg-3);font-family:var(--mono);margin-right:6px;">#${s.stepIndex}</span>${esc(localizeLabel(s.label))}</div>
+              <div class="heavy-desc">${esc(humanizeWebPreview(s.preview))}</div>
+            </div>
+            <div class="heavy-tok">~${fmtCompact(s.tokens)}</div>
+          </div>
+        `)
+        .join('');
+
+      const b = a.breakdown || {};
+      const bTot = (b.systemOverhead || 0) + (b.toolOutputs || 0) + (b.userMessages || 0) + (b.modelResponses || 0) + (b.thinking || 0);
+      const bPct = (v) => (bTot > 0 ? Math.round((v / bTot) * 100) : 0);
+
       return `
         <div class="page-head">
           <div>
             <h1 class="page-title">${esc(t('cockpitTitle'))}</h1>
-            <div class="page-sub">${esc(t('cockpitSub'))}</div>
+            <div class="page-sub">${esc(a.model)} · ${esc(fmtRel(a.updatedAt))}</div>
           </div>
           <select id="convSelect" class="select" style="max-width:340px;">${convOpts}</select>
         </div>
@@ -660,7 +851,7 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:baseline;">
             <div style="font-size:28px;font-weight:800;">${a.utilizationPct}%</div>
-            <div style="font-family:var(--mono);color:var(--fg-2);">${fmtCompact(a.latestContextTokens)} / ${fmtCompact(a.contextLimit)} · ${esc(a.model)}</div>
+            <div style="font-family:var(--mono);color:var(--fg-2);">${fmtCompact(a.latestContextTokens)} / ${fmtCompact(a.contextLimit)}</div>
           </div>
           <div class="dual-track">
             <div class="dual-cache" style="width:${cachePct.toFixed(2)}%"></div>
@@ -679,8 +870,39 @@
         </div>
 
         <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong>${esc(t('timeline'))}</strong>
+            <span style="font-family:var(--mono);font-size:11.5px;color:var(--fg-3);">${a.turns} ${esc(t('turns'))}</span>
+          </div>
+          ${renderWebTimeline(a.turnTimeline, a.firstStepIndex ?? 1, a.lastStepIndex ?? a.stepCount)}
+        </div>
+
+        <div class="card">
           <strong>${esc(t('topSpikes'))}</strong>
           ${spikesHtml || `<div style="color:var(--fg-3);">${esc(t('noItems'))}</div>`}
+        </div>
+
+        <div class="card">
+          <strong>${esc(t('heaviestSteps'))}</strong>
+          ${heaviestHtml || `<div style="color:var(--fg-3);">${esc(t('noItems'))}</div>`}
+        </div>
+
+        <div class="card">
+          <strong>${esc(t('breakdown'))}</strong>
+          <div class="stacked-bar">
+            <div style="width:${bPct(b.systemOverhead)}%;background:#64748b;"></div>
+            <div style="width:${bPct(b.toolOutputs)}%;background:#f59e0b;"></div>
+            <div style="width:${bPct(b.userMessages)}%;background:#4f8cff;"></div>
+            <div style="width:${bPct(b.modelResponses)}%;background:#22c55e;"></div>
+            <div style="width:${bPct(b.thinking)}%;background:#a855f7;"></div>
+          </div>
+          <div class="legend-grid">
+            <div class="legend-item"><span><span class="dot" style="background:#64748b;"></span>${esc(t('catSystem'))}</span><strong>${fmtCompact(b.systemOverhead)} (${bPct(b.systemOverhead)}%)</strong></div>
+            <div class="legend-item"><span><span class="dot" style="background:#f59e0b;"></span>${esc(t('catTools'))}</span><strong>${fmtCompact(b.toolOutputs)} (${bPct(b.toolOutputs)}%)</strong></div>
+            <div class="legend-item"><span><span class="dot" style="background:#4f8cff;"></span>${esc(t('catUser'))}</span><strong>${fmtCompact(b.userMessages)} (${bPct(b.userMessages)}%)</strong></div>
+            <div class="legend-item"><span><span class="dot" style="background:#22c55e;"></span>${esc(t('catModel'))}</span><strong>${fmtCompact(b.modelResponses)} (${bPct(b.modelResponses)}%)</strong></div>
+            <div class="legend-item"><span><span class="dot" style="background:#a855f7;"></span>${esc(t('catThinking'))}</span><strong>${fmtCompact(b.thinking)} (${bPct(b.thinking)}%)</strong></div>
+          </div>
         </div>
       `;
     }

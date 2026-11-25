@@ -122,9 +122,18 @@ const I18N = {
     taskFormTitle: 'Yeni Görev (Oturumlar Arası)',
     taskTitleLbl: 'Görev Başlığı *',
     taskTitlePh: 'Örn: İlk taslağı hazırla',
+    taskProjectLbl: 'Proje / Sohbet',
+    taskProjectPh: 'İsteğe bağlı proje veya sohbet adı',
+    taskStatusLbl: 'Durum',
     taskPriorityLbl: 'Öncelik',
     taskNotesLbl: 'Notlar',
     taskNotesPh: 'Görev detayları...',
+    allProjectsOpt: 'Tüm sohbetler ve projeler',
+    colInbox: 'GELEN',
+    colActive: 'AKTİF',
+    colWaiting: 'BEKLİYOR',
+    colDone: 'BİTTİ',
+    colCancelled: 'İPTAL',
     taskToggleDone: '☑ Tamamlandı',
     taskToggleOpen: '☐ Tamamla',
     toastTaskSaved: 'Görev kasaya kaydedildi.',
@@ -279,9 +288,18 @@ const I18N = {
     taskFormTitle: 'New Task (Cross-Session)',
     taskTitleLbl: 'Task Title *',
     taskTitlePh: 'e.g. Prepare initial draft',
+    taskProjectLbl: 'Project / Chat',
+    taskProjectPh: 'Optional project or conversation name',
+    taskStatusLbl: 'Status',
     taskPriorityLbl: 'Priority',
     taskNotesLbl: 'Notes',
     taskNotesPh: 'Task details...',
+    allProjectsOpt: 'All chats & projects',
+    colInbox: 'INBOX',
+    colActive: 'ACTIVE',
+    colWaiting: 'WAITING',
+    colDone: 'DONE',
+    colCancelled: 'CANCELLED',
     taskToggleDone: '☑ Done',
     taskToggleOpen: '☐ Mark Done',
     toastTaskSaved: 'Task saved to vault.',
@@ -329,6 +347,7 @@ const state = {
   packs: [],
   vault: null,
   vaultFilter: 'all',
+  taskProjectFilter: '__all__',
   vaultSearchQuery: '',
   vaultSearchResults: null,
   vaultForm: null, // 'handoff' | 'capture' | 'decision' | null
@@ -773,6 +792,8 @@ async function handleSaveTask(e) {
   e.preventDefault();
   const form = e.target;
   const title = form.taskTitle.value.trim();
+  const project = (form.taskProject?.value || '').trim();
+  const status = form.taskStatus?.value || 'inbox';
   const priority = form.taskPriority.value;
   const notes = form.taskNotes.value;
   if (!title) {
@@ -780,7 +801,7 @@ async function handleSaveTask(e) {
     return;
   }
   try {
-    const res = await callTool('save_task', { title, priority, notes, lang: state.lang });
+    const res = await callTool('save_task', { title, project, status, priority, notes, lang: state.lang });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
     state.vaultSearchResults = null;
@@ -791,9 +812,9 @@ async function handleSaveTask(e) {
   }
 }
 
-async function handleToggleTask(filePath) {
+async function handleUpdateTaskStatus(filePath, status) {
   try {
-    const res = await callTool('toggle_task', { path: filePath });
+    const res = await callTool('update_task_status', { path: filePath, status });
     if (res?.vault) state.vault = res.vault;
     if (state.vaultSearchQuery) {
       const sres = await callTool('search_vault', { query: state.vaultSearchQuery, limit: 25 });
@@ -1541,6 +1562,27 @@ function renderMemory() {
     return t('kindNote');
   };
 
+  const TASK_COLS = [
+    { id: 'inbox', label: t('colInbox') },
+    { id: 'active', label: t('colActive') },
+    { id: 'waiting', label: t('colWaiting') },
+    { id: 'done', label: t('colDone') },
+    { id: 'cancelled', label: t('colCancelled') },
+  ];
+
+  const allProjectsSet = new Set();
+  for (const item of v?.items || []) {
+    if (item.project) allProjectsSet.add(item.project);
+  }
+  for (const conv of state.analysis?.conversations || []) {
+    if (conv.title) allProjectsSet.add(conv.title);
+  }
+  const projectList = [...allProjectsSet];
+  const defaultTaskProj =
+    state.taskProjectFilter !== '__all__'
+      ? state.taskProjectFilter
+      : state.analysis?.title || '';
+
   const editingPack = state.editingPackId
     ? state.packs.find((p) => p.id === state.editingPackId)
     : null;
@@ -1651,12 +1693,27 @@ function renderMemory() {
             <input id="taskTitle" name="taskTitle" class="input" required placeholder="${esc(t('taskTitlePh'))}" />
           </div>
           <div class="field">
-            <label for="taskPriority">${esc(t('taskPriorityLbl'))}</label>
-            <select id="taskPriority" name="taskPriority" class="input">
-              <option value="normal">${state.lang === 'tr' ? 'Normal' : 'Normal'}</option>
-              <option value="high">${state.lang === 'tr' ? 'Yüksek' : 'High'}</option>
-              <option value="low">${state.lang === 'tr' ? 'Düşük' : 'Low'}</option>
-            </select>
+            <label for="taskProject">${esc(t('taskProjectLbl'))}</label>
+            <input id="taskProject" name="taskProject" list="taskProjList" class="input" placeholder="${esc(t('taskProjectPh'))}" value="${esc(defaultTaskProj)}" />
+            <datalist id="taskProjList">
+              ${projectList.map((p) => `<option value="${esc(p)}"></option>`).join('')}
+            </datalist>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <div class="field">
+              <label for="taskStatus">${esc(t('taskStatusLbl'))}</label>
+              <select id="taskStatus" name="taskStatus" class="input">
+                ${TASK_COLS.map((c) => `<option value="${c.id}">${esc(c.label)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label for="taskPriority">${esc(t('taskPriorityLbl'))}</label>
+              <select id="taskPriority" name="taskPriority" class="input">
+                <option value="normal">${state.lang === 'tr' ? 'Normal' : 'Normal'}</option>
+                <option value="high">${state.lang === 'tr' ? 'Yüksek' : 'High'}</option>
+                <option value="low">${state.lang === 'tr' ? 'Düşük' : 'Low'}</option>
+              </select>
+            </div>
           </div>
           <div class="field">
             <label for="taskNotes">${esc(t('taskNotesLbl'))}</label>
@@ -1708,29 +1765,32 @@ function renderMemory() {
     `
     : '';
 
-  const vaultCardsHtml = vaultItems
-    .map(
-      (item) => `
+  const renderVaultItemCard = (item) => {
+    const isTaskDone = item.kind === 'task' && (item.status === 'done' || item.status === 'cancelled');
+    const taskStatusSelect =
+      item.kind === 'task'
+        ? `<select class="status-select-sm" data-task-status-path="${esc(item.path)}">${TASK_COLS.map(
+            (c) => `<option value="${c.id}" ${(item.status || 'inbox') === c.id ? 'selected' : ''}>${esc(c.label)}</option>`
+          ).join('')}</select>`
+        : '';
+
+    return `
           <div class="card">
             <div class="pack-head">
               <div style="min-width:0;flex:1;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
                   <span class="kind-badge kind-${esc(item.kind)}">${esc(item.sourceType ? localizeSourceType(item.sourceType) : kindLabel(item.kind))}</span>
-                  <h4 class="pack-name ${item.kind === 'task' && item.status === 'done' ? 'task-done' : ''}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.title)}</h4>
+                  <h4 class="pack-name ${isTaskDone ? 'task-done' : ''}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.title)}</h4>
                 </div>
                 <div class="note-meta">
-                  <span>${esc(item.relativePath)}</span> · <span>${esc(fmtRelativeTime(item.updatedAt))}</span>
+                  ${item.project ? `<span>#${esc(item.project)}</span> · ` : ''}<span>${esc(item.relativePath)}</span> · <span>${esc(fmtRelativeTime(item.updatedAt))}</span>
                 </div>
               </div>
               <span class="badge">~${fmtCompact(item.tokens)}</span>
             </div>
             ${item.snippet || item.preview ? `<div class="note-preview">${esc(item.snippet || item.preview)}</div>` : ''}
             <div class="pack-actions">
-              ${
-                item.kind === 'task'
-                  ? `<button class="btn btn-sm" data-vaction="toggle" data-path="${esc(item.path)}">${esc(item.status === 'done' ? t('taskToggleDone') : t('taskToggleOpen'))}</button>`
-                  : ''
-              }
+              ${taskStatusSelect}
               <button class="btn btn-sm" data-vaction="open" data-uri="${esc(item.fileUri)}">${esc(t('openFileBtn'))}</button>
               ${
                 canAttach
@@ -1745,16 +1805,50 @@ function renderMemory() {
               <button class="btn btn-danger btn-sm" data-vaction="delete" data-path="${esc(item.path)}">${esc(t('deleteBtn'))}</button>
             </div>
           </div>
-        `
-    )
-    .join('');
+        `;
+  };
+
+  const taskProjectBar =
+    state.vaultFilter === 'task' && !isSearching
+      ? `
+        <div class="task-filter-bar">
+          <select id="taskProjectSelect" class="input" style="flex:1;min-width:0;">
+            <option value="__all__" ${state.taskProjectFilter === '__all__' ? 'selected' : ''}>${esc(t('allProjectsOpt'))}</option>
+            ${projectList
+              .map((p) => `<option value="${esc(p)}" ${p === state.taskProjectFilter ? 'selected' : ''}>${esc(p)}</option>`)
+              .join('')}
+          </select>
+        </div>
+      `
+      : '';
+
+  const filteredVaultItems =
+    state.vaultFilter === 'task' && !isSearching && state.taskProjectFilter !== '__all__'
+      ? vaultItems.filter((i) => (i.project || '') === state.taskProjectFilter)
+      : vaultItems;
 
   const packCardsHtml = matchingPacks.map((p) => renderPackCard(p, canAttach, canMessage)).join('');
 
-  const listHtml =
-    vaultItems.length === 0 && matchingPacks.length === 0
-      ? `<div class="card"><div class="empty">${t('emptyVault')}</div></div>`
-      : `<div class="pack-list">${packCardsHtml}${vaultCardsHtml}</div>`;
+  let listHtml = '';
+  if (state.vaultFilter === 'task' && !isSearching) {
+    const groupedHtml = TASK_COLS.map((col) => {
+      const colItems = filteredVaultItems.filter((i) => (i.status || 'inbox') === col.id);
+      return `
+        <div class="task-group-head">
+          <span>${esc(col.label)}</span>
+          <span>${colItems.length}</span>
+        </div>
+        ${colItems.length > 0 ? colItems.map(renderVaultItemCard).join('') : ''}
+      `;
+    }).join('');
+    listHtml = `<div class="pack-list">${groupedHtml}</div>`;
+  } else {
+    const vaultCardsHtml = filteredVaultItems.map(renderVaultItemCard).join('');
+    listHtml =
+      filteredVaultItems.length === 0 && matchingPacks.length === 0
+        ? `<div class="card"><div class="empty">${t('emptyVault')}</div></div>`
+        : `<div class="pack-list">${packCardsHtml}${vaultCardsHtml}</div>`;
+  }
 
   return `
     <div class="vault-bar">
@@ -1796,6 +1890,8 @@ function renderMemory() {
       <button class="pill-btn ${state.vaultFilter === 'inbox' && !isSearching ? 'active' : ''}" data-vfilter="inbox">${esc(t('filterInbox'))} (${counts.inbox})</button>
       <button class="pill-btn ${state.vaultFilter === 'pack' && !isSearching ? 'active' : ''}" data-vfilter="pack">${esc(t('filterPack'))} (${state.packs.length})</button>
     </div>
+
+    ${taskProjectBar}
 
     ${listHtml}
   `;
@@ -1910,11 +2006,21 @@ function bindEvents() {
     });
   });
 
+  document.getElementById('taskProjectSelect')?.addEventListener('change', (e) => {
+    state.taskProjectFilter = e.target.value;
+    render();
+  });
+
+  document.querySelectorAll('[data-task-status-path]').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      handleUpdateTaskStatus(sel.dataset.taskStatusPath, sel.value);
+    });
+  });
+
   document.querySelectorAll('[data-vaction]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const { vaction, uri, path: filePath, title } = btn.dataset;
-      if (vaction === 'toggle') handleToggleTask(filePath);
-      else if (vaction === 'open') handleOpenVaultFile(uri);
+      if (vaction === 'open') handleOpenVaultFile(uri);
       else if (vaction === 'attach') handleAttachVaultNote(filePath, title);
       else if (vaction === 'send') handleSendVaultNote(filePath, title);
       else if (vaction === 'delete') handleDeleteVaultNote(filePath);

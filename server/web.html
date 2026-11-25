@@ -472,6 +472,7 @@
         stoppedTitle: 'Context Brain Web stopped',
         stoppedSub: 'You can close this tab or restart with npm run web.',
         deleteLbl: 'Delete',
+        pinLbl: 'Pin / Unpin',
         generalTag: '#general',
         kinds: { handoff: 'Session', decision: 'Decision', task: 'Task', inbox: 'Inbox', note: 'Note' },
         toastSaved: 'Saved!',
@@ -573,6 +574,7 @@
         stoppedTitle: 'Context Brain Web kapatıldı',
         stoppedSub: 'Bu sekmeyi kapatabilir veya npm run web ile yeniden başlatabilirsin.',
         deleteLbl: 'Sil',
+        pinLbl: 'Sabitle / Kaldır',
         generalTag: '#genel',
         kinds: { handoff: 'Oturum', decision: 'Karar', task: 'Görev', inbox: 'Yakala', note: 'Not' },
         toastSaved: 'Kaydedildi!',
@@ -942,7 +944,7 @@
                 </div>
                 <div class="card-row">
                   <select class="status-select" data-status-path="${esc(item.path)}">${statusOpts}</select>
-                  <button class="del-icon ${item.pinned ? 'pin-on' : ''}" title="Pin" data-pin-path="${esc(item.path)}">📌</button>
+                  <button class="del-icon ${item.pinned ? 'pin-on' : ''}" title="${esc(t('pinLbl'))}" data-pin-path="${esc(item.path)}">📌</button>
                   <button class="del-icon" title="${esc(t('editTaskTitle'))}" data-edit-task="${esc(item.path)}">✎</button>
                   <button class="del-icon" title="${esc(t('deleteLbl'))}" data-del-path="${esc(item.path)}">🗑</button>
                 </div>
@@ -1165,8 +1167,8 @@
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--fg-3);font-family:var(--mono);">
               <span>${esc(i.relativePath)}</span>
               <div>
-                <button class="del-icon ${i.pinned ? 'pin-on' : ''}" data-pin-path="${esc(i.path)}">📌</button>
-                <button class="del-icon" data-del-path="${esc(i.path)}">🗑</button>
+                <button class="del-icon ${i.pinned ? 'pin-on' : ''}" title="${esc(t('pinLbl'))}" data-pin-path="${esc(i.path)}">📌</button>
+                <button class="del-icon" title="${esc(t('deleteLbl'))}" data-del-path="${esc(i.path)}">🗑</button>
               </div>
             </div>
           </div>
@@ -1437,14 +1439,18 @@
       document.getElementById('btnWebSnapshot')?.addEventListener('click', async () => {
         const a = state.data?.analysis;
         if (!a || !a.found) return;
-        const topLabels = (a.topSpikes || []).slice(0, 3).map((s) => s.label).join(', ');
+        const isTr = state.lang === 'tr';
+        const topLabels = (a.topSpikes || []).slice(0, 3).map((s) => localizeLabel(s.label)).join(', ');
+        const summary = isTr
+          ? `${a.model} · ${a.turns} tur · ${fmtCompact(a.latestContextTokens)} token (%${a.utilizationPct}).${topLabels ? ` Öne çıkanlar: ${topLabels}` : ''}`
+          : `${a.model} · ${a.turns} turns · ${fmtCompact(a.latestContextTokens)} tokens (${a.utilizationPct}%).${topLabels ? ` Key steps: ${topLabels}` : ''}`;
         await api('/api/handoff', {
           method: 'POST',
           body: JSON.stringify({
             title: a.title,
-            summary: `${a.model} · ${a.turns} turns · ${fmtCompact(a.latestContextTokens)} tokens (${a.utilizationPct}%).${topLabels ? ` Key steps: ${topLabels}` : ''}`,
+            summary,
             openItems: '-',
-            nextStep: state.lang === 'tr' ? 'Kaldığın yerden devam et.' : 'Continue from where we left off.',
+            nextStep: isTr ? 'Kaldığın yerden devam et.' : 'Continue from where we left off.',
             lang: state.lang,
           }),
         });

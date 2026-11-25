@@ -107,16 +107,18 @@ Bu klasör (\`~/Antigravity-Brain\`), tüm oturum notlarını, görevlerini, kar
 - **En Ağır Adımlar & Kategori Dağılımı:** En çok yer kaplayan 10 adımı sade cümlelerle ve Sistem / Araçlar / Kullanıcı / Model / Düşünme dağılımıyla sunar.
 
 ### 2. 🧠 Hafıza (Memory)
-- **💾 Oturum Kaydet (\`sessions/\`):** Son işin sonucu, açık konular ve sonraki adımı kaydedip yeni oturumda tek tıkla devam etmeni sağlar.
-- **✅ Görev Ekle (\`tasks/\`):** 5 durumlu (**\`GELEN · AKTİF · BEKLİYOR · BİTTİ · İPTAL\`**) görev takibi; proje/sohbet bazlı filtreleme, kısa açıklama ve satır içi düzenleme (\`✎\`) destekler.
+- **💾 Oturum Kaydet (\`sessions/\`):** Son işin sonucu, açık konular ve sonraki adımı kaydedip yeni oturumda tek tıkla devam etmeni sağlar. Üst bardaki **\`⚡ Sohbeti Kaydet\`** butonuyla aktif konuşmayı tek tıkla devir notu yapabilirsin.
+- **✅ Görev Ekle (\`tasks/\`):** 5 durumlu (**\`GELEN · AKTİF · BEKLİYOR · BİTTİ · İPTAL\`**) görev takibi; proje/sohbet bazlı filtreleme, **hedef tarih (\`Due Date\`, geciken/bugün uyarılı)**, kısa açıklama, **sabitleme (\`📌\`)** ve satır içi düzenleme (\`✎\`) destekler.
 - **🧭 Karar Ekle (\`decisions/\`):** Alınan kararları ve gerekçelerini aranabilir şekilde saklar.
 - **⚡ Yakala (\`inbox/\`):** Video, makale, dosya veya notları tek seferde gelen kutusuna alır.
 - **📦 Paket Ekle:** Birden fazla yerel proje dosyasını ve kuralı gruplayıp tek tıkla sohbete yükler.
+- **📌 Sabitleme & 💾 Yedekleme:** Önemli görev ve notları **\`📌\`** ile en üstte sabit tutabilir; **\`💾 Yedekle\`** ile tüm kasanın tarih-saat damgalı yedeğini \`~/Antigravity-Brain-Backups/\` altına alabilirsin.
 - **🔍 Akıllı Arama & Kart İşlemleri:** Türkçe/İngilizce soru kalıplarını ayıklayarak arama yapar; **\`📂 Dosyayı Aç\`** dosyayı yan panelde açar, **\`📎 Bağlama Ekle\`** sonraki mesaja iliştirir, **\`↗ Gönder\`** doğrudan sohbete yollar.
 
-### 3. 🕒 Log (Aktivite Geçmişi — \`.activity-log.jsonl\`)
-- Eklediğin, düzenlediğin, durumunu değiştirdiğin ve sildiğin her işlemi **gün bazlı (\`Bugün / Dün / Tarih\`)**, **saat + kaç dakika önce** ve **kaynak etiketi (\`Web / Antigravity / AI Ajan\`)** ile kaydeder.
-- Herhangi bir log satırına tıkladığında değişen alanların **öncesi → sonrası** farkını (başlık, durum, açıklama, proje, dosya yolu) ayrıntılı olarak görebilirsin.
+### 3. 🕒 Log (Aktivite Geçmişi & Geri Alma — \`.activity-log.jsonl\`)
+- Eklediğin, düzenlediğin, durumunu değiştirdiğin, sabitlediğin, yedeklediğin ve sildiğin her işlemi **gün bazlı (\`Bugün / Dün / Tarih\`)**, **saat + kaç dakika önce** ve **kaynak etiketi (\`Web / Antigravity / AI Ajan\`)** ile kaydeder.
+- Herhangi bir log satırına tıkladığında değişen alanların **öncesi → sonrası** farkını (başlık, durum, hedef tarih, açıklama, proje, dosya yolu) ayrıntılı olarak görebilirsin.
+- **Çöp Kutusu & Geri Alma (\`.trash/\`):** Silinen kayıtlar kalıcı yok olmaz; **Log** sekmesindeki ilgili satırdan **\`↩ Geri Al\`** butonuyla tek tıkla kurtarılabilir.
 
 ---
 
@@ -151,16 +153,18 @@ This folder (\`~/Antigravity-Brain\`) is your **portable memory vault**, storing
 - **Heaviest Steps & Category Breakdown:** Top 10 heaviest steps with plain-language summaries plus System / Tools / User / Model / Thinking breakdown.
 
 ### 2. 🧠 Memory
-- **💾 Save Handoff (\`sessions/\`):** Save outcome, open items, and next step to pick up seamlessly in a new conversation.
-- **✅ Add Task (\`tasks/\`):** 5-stage task tracking (**\`INBOX · ACTIVE · WAITING · DONE · CANCELLED\`**) with project/chat filtering, optional descriptions, and inline editing (\`✎\`).
+- **💾 Save Handoff (\`sessions/\`):** Save outcome, open items, and next step to pick up seamlessly in a new conversation. Use **\`⚡ Snapshot\`** to save the active conversation in one click.
+- **✅ Add Task (\`tasks/\`):** 5-stage task tracking (**\`INBOX · ACTIVE · WAITING · DONE · CANCELLED\`**) with project/chat filtering, **due dates (overdue/today badges)**, optional descriptions, **pinning (\`📌\`)**, and inline editing (\`✎\`).
 - **🧭 Decision (\`decisions/\`):** Record decisions and rationale so you can trace *why* later.
 - **⚡ Capture (\`inbox/\`):** Quick-capture videos, articles, files, or notes into your inbox.
 - **📦 Add Pack:** Bundle multiple local project files + reusable rules and attach live contents to chat in one click.
+- **📌 Pinning & 💾 Backup:** Pin important items to the top with **\`📌\`**, and click **\`💾 Backup\`** to save a timestamped copy of your vault under \`~/Antigravity-Brain-Backups/\`.
 - **🔍 Smart Search & Card Actions:** Strips English/Turkish question filler words; **\`📂 Open File\`** opens the \`.md\` file in Antigravity's side pane, **\`📎 Attach Context\`** attaches it to your next message, and **\`↗ Send\`** sends it directly to chat.
 
-### 3. 🕒 Log (Activity History — \`.activity-log.jsonl\`)
-- Automatically records every creation, edit, status move, and deletion grouped by day (**\`Today / Yesterday / Date\`**) with exact time, relative time, and source badge (**\`Web / Antigravity / AI Agent\`**).
-- Click any log row to expand exact **before → after** field diffs (title, status, description, project, file path).
+### 3. 🕒 Log (Activity History & Undo — \`.activity-log.jsonl\`)
+- Automatically records every creation, edit, status move, pin, backup, and deletion grouped by day (**\`Today / Yesterday / Date\`**) with exact time, relative time, and source badge (**\`Web / Antigravity / AI Agent\`**).
+- Click any log row to expand exact **before → after** field diffs (title, status, due date, description, project, file path).
+- **Trash & Restore (\`.trash/\`):** Deleted notes are safely moved to \`.trash/\` and can be restored in one click via **\`↩ Restore\`** in the Log tab.
 
 ---
 

@@ -19,16 +19,18 @@ A **Live Context Window Monitor** and **Portable Markdown Memory Vault** (MCP Ap
 
 ### 2. Memory
 All notes are stored as plain `.md` files in `~/Antigravity-Brain` (automatically created on first run; compatible with Claude Code, Codex, Cursor, Obsidian, and Git):
-- **💾 Save Handoff (`sessions/`):** Save session outcome, open items, and next step to pick up seamlessly in a new conversation.
-- **✅ Add Task (`tasks/`):** 5-stage task tracking (`INBOX` · `ACTIVE` · `WAITING` · `DONE` · `CANCELLED`) with project/chat filter, optional descriptions, and inline editing.
+- **💾 Save Handoff (`sessions/`):** Save session outcome, open items, and next step to pick up seamlessly in a new conversation — or use **⚡ Snapshot** to save the current chat in one click.
+- **✅ Add Task (`tasks/`):** 5-stage task tracking (`INBOX` · `ACTIVE` · `WAITING` · `DONE` · `CANCELLED`) with project/chat filter, **due dates (overdue/today badges)**, optional descriptions, **pinning (`📌`)**, and inline editing.
 - **🧭 Decision (`decisions/`):** Record decisions and rationale so you can trace *why* later.
 - **⚡ Capture (`inbox/`):** Quick-capture videos, articles, files, or notes into your inbox.
 - **📦 Add Pack:** Bundle multiple local project files + reusable rules and attach their live contents to chat in one click (`📎 Attach Context` / `↗ Send`).
+- **💾 One-Click Backup:** Save a timestamped local copy of your vault to `~/Antigravity-Brain-Backups/`.
 - **🔍 Smart Search & Open File:** Strips English/Turkish question filler words, ranks matches by relevance, and opens `.md` files directly in Antigravity's side pane.
 
-### 3. Activity Log (`Log` Tab)
+### 3. Activity Log & Trash Restore (`Log` Tab)
 - Persistent, date-grouped (`Today / Yesterday / Date`) activity history stored in `~/Antigravity-Brain/.activity-log.jsonl`.
-- Tracks every creation, edit, status change, and deletion with exact time, relative time, source badge (`Web` / `Antigravity` / `AI Agent`), category filters, and expandable **before → after** diffs.
+- Tracks every creation, edit, status change, pin, backup, and deletion with exact time, relative time, source badge (`Web` / `Antigravity` / `AI Agent`), category filters, and expandable **before → after** diffs.
+- **Trash & Undo (`.trash/`):** Deleted notes can be restored in one click via **`↩ Restore`** right from the Activity Log.
 
 ### 4. Local Web App (Kanban Board & Overview)
 Launch a full-screen local web dashboard (`127.0.0.1`, auto-closes after 30 min idle) with one click from the **`🌐 Web`** button inside Context Brain, or from your terminal even when Antigravity is closed:

@@ -194,6 +194,7 @@ const I18N = {
       web_opened: 'Web Açıldı',
     },
     dueLbl: 'Hedef Tarih',
+    pinLbl: 'Sabitle / Kaldır',
     overdueLbl: 'Gecikti',
     todayLbl: 'Bugün',
     backupBtn: '💾 Yedekle',
@@ -390,6 +391,7 @@ const I18N = {
       web_opened: 'Web Opened',
     },
     dueLbl: 'Due Date',
+    pinLbl: 'Pin / Unpin',
     overdueLbl: 'Overdue',
     todayLbl: 'Today',
     backupBtn: '💾 Backup',
@@ -1987,7 +1989,7 @@ function renderMemory() {
             ${item.kind === 'task' && item.notes ? `<div class="note-preview">${esc(item.notes)}</div>` : item.snippet || item.preview ? `<div class="note-preview">${esc(item.snippet || item.preview)}</div>` : ''}
             <div class="pack-actions">
               ${taskStatusSelect}
-              <button class="btn btn-sm" data-vaction="pin" data-path="${esc(item.path)}" title="Pin">${item.pinned ? '📌' : '📍'}</button>
+              <button class="btn btn-sm" data-vaction="pin" data-path="${esc(item.path)}" title="${esc(t('pinLbl'))}">${item.pinned ? '📌' : '📍'}</button>
               ${item.kind === 'task' ? `<button class="btn btn-sm" data-vaction="editTask" data-path="${esc(item.path)}">${esc(t('editBtn'))}</button>` : ''}
               <button class="btn btn-sm" data-vaction="open" data-uri="${esc(item.fileUri)}">${esc(t('openFileBtn'))}</button>
               ${

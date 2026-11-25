@@ -189,7 +189,18 @@ export class MemoryVault {
     this.ensureStructure();
   }
 
-  appendLog({ action, entity = '', title = '', detail = '', project = '', fromStatus = '', toStatus = '' }) {
+  appendLog({
+    action,
+    entity = '',
+    source = 'ai',
+    title = '',
+    detail = '',
+    project = '',
+    relativePath = '',
+    fromStatus = '',
+    toStatus = '',
+    changes = [],
+  }) {
     try {
       this.ensureStructure();
       const entry = {
@@ -197,11 +208,14 @@ export class MemoryVault {
         timestamp: new Date().toISOString(),
         action: String(action || 'event'),
         entity: String(entity || ''),
+        source: String(source || 'ai'),
         title: String(title || ''),
         detail: String(detail || ''),
         project: String(project || ''),
+        relativePath: String(relativePath || ''),
         fromStatus: String(fromStatus || ''),
         toStatus: String(toStatus || ''),
+        changes: Array.isArray(changes) ? changes : [],
       };
       fs.appendFileSync(this.logPath, `${JSON.stringify(entry)}\n`, 'utf8');
       return entry;
@@ -353,7 +367,7 @@ export class MemoryVault {
     };
   }
 
-  saveHandoff({ title, summary = '', openItems = '', nextStep = '', tags = [], lang = 'en' }) {
+  saveHandoff({ title, summary = '', openItems = '', nextStep = '', tags = [], lang = 'en', source = 'ai' }) {
     this.ensureStructure();
     const isTr = lang === 'tr';
     const cleanTitle = String(title || '').trim() || `${isTr ? 'Oturum Notu' : 'Session Handoff'} ${dateStamp()}`;
@@ -384,11 +398,24 @@ export class MemoryVault {
 
     fs.writeFileSync(filePath, content, 'utf8');
     const item = this._readItem(filePath);
-    this.appendLog({ action: 'handoff_saved', entity: 'handoff', title: item.title, detail: nextStep.trim() || summary.trim() });
+    const changes = [];
+    if (summary.trim()) changes.push({ field: 'summary', next: summary.trim() });
+    if (openItems.trim()) changes.push({ field: 'openItems', next: openItems.trim() });
+    if (nextStep.trim()) changes.push({ field: 'nextStep', next: nextStep.trim() });
+    changes.push({ field: 'file', next: item.relativePath });
+    this.appendLog({
+      action: 'handoff_saved',
+      entity: 'handoff',
+      source,
+      title: item.title,
+      detail: nextStep.trim() || summary.trim(),
+      relativePath: item.relativePath,
+      changes,
+    });
     return item;
   }
 
-  saveDecision({ title, decision = '', rationale = '', tags = [], lang = 'en' }) {
+  saveDecision({ title, decision = '', rationale = '', tags = [], lang = 'en', source = 'ai' }) {
     this.ensureStructure();
     const isTr = lang === 'tr';
     const cleanTitle = String(title || '').trim();
@@ -417,11 +444,23 @@ export class MemoryVault {
 
     fs.writeFileSync(filePath, content, 'utf8');
     const item = this._readItem(filePath);
-    this.appendLog({ action: 'decision_saved', entity: 'decision', title: item.title, detail: decision.trim() });
+    const changes = [];
+    if (decision.trim()) changes.push({ field: 'decision', next: decision.trim() });
+    if (rationale.trim()) changes.push({ field: 'rationale', next: rationale.trim() });
+    changes.push({ field: 'file', next: item.relativePath });
+    this.appendLog({
+      action: 'decision_saved',
+      entity: 'decision',
+      source,
+      title: item.title,
+      detail: decision.trim(),
+      relativePath: item.relativePath,
+      changes,
+    });
     return item;
   }
 
-  captureResource({ title, sourceType = 'note', urlOrPath = '', notes = '', tags = [], lang = 'en' }) {
+  captureResource({ title, sourceType = 'note', urlOrPath = '', notes = '', tags = [], lang = 'en', source = 'ai' }) {
     this.ensureStructure();
     const isTr = lang === 'tr';
     const cleanTitle = String(title || '').trim() || `${isTr ? 'Yakalanan Kaynak' : 'Captured Resource'} ${dateStamp()}`;
@@ -450,11 +489,22 @@ export class MemoryVault {
 
     fs.writeFileSync(filePath, content, 'utf8');
     const item = this._readItem(filePath);
-    this.appendLog({ action: 'resource_captured', entity: 'inbox', title: item.title, detail: urlOrPath.trim() || notes.trim() });
+    const changes = [{ field: 'source', next: urlOrPath.trim() || normType }];
+    if (notes.trim()) changes.push({ field: 'notes', next: notes.trim() });
+    changes.push({ field: 'file', next: item.relativePath });
+    this.appendLog({
+      action: 'resource_captured',
+      entity: 'inbox',
+      source,
+      title: item.title,
+      detail: urlOrPath.trim() || notes.trim(),
+      relativePath: item.relativePath,
+      changes,
+    });
     return item;
   }
 
-  saveTask({ title, notes = '', priority = 'normal', status = 'inbox', project = '', tags = [], lang = 'en' }) {
+  saveTask({ title, notes = '', priority = 'normal', status = 'inbox', project = '', tags = [], lang = 'en', source = 'ai' }) {
     this.ensureStructure();
     const isTr = lang === 'tr';
     const cleanTitle = String(title || '').trim();
@@ -485,11 +535,25 @@ export class MemoryVault {
 
     fs.writeFileSync(filePath, content, 'utf8');
     const item = this._readItem(filePath);
-    this.appendLog({ action: 'task_created', entity: 'task', title: item.title, detail: notes.trim(), project: cleanProject, toStatus: cleanStatus });
+    const changes = [{ field: 'status', next: cleanStatus }];
+    if (cleanProject) changes.push({ field: 'project', next: cleanProject });
+    if (notes.trim()) changes.push({ field: 'notes', next: notes.trim() });
+    changes.push({ field: 'file', next: item.relativePath });
+    this.appendLog({
+      action: 'task_created',
+      entity: 'task',
+      source,
+      title: item.title,
+      detail: notes.trim(),
+      project: cleanProject,
+      relativePath: item.relativePath,
+      toStatus: cleanStatus,
+      changes,
+    });
     return item;
   }
 
-  updateTask({ path: filePath, title, notes, project, priority, status, lang = 'en' }) {
+  updateTask({ path: filePath, title, notes, project, priority, status, lang = 'en', source = 'ai' }) {
     const resolved = path.resolve(String(filePath || ''));
     const vaultResolved = path.resolve(this.vaultDir);
     if (!resolved.startsWith(vaultResolved) || !fs.existsSync(resolved)) {
@@ -529,19 +593,29 @@ export class MemoryVault {
 
     fs.writeFileSync(resolved, content, 'utf8');
     const item = this._readItem(resolved);
+    const changes = [];
+    if (existingItem.title !== cleanTitle) changes.push({ field: 'title', old: existingItem.title, next: cleanTitle });
+    if (existingItem.status !== cleanStatus) changes.push({ field: 'status', old: existingItem.status, next: cleanStatus });
+    if ((existingItem.project || '') !== cleanProject) changes.push({ field: 'project', old: existingItem.project || '-', next: cleanProject || '-' });
+    if ((existingItem.priority || 'normal') !== cleanPriority) changes.push({ field: 'priority', old: existingItem.priority || 'normal', next: cleanPriority });
+    if ((existingItem.notes || '') !== cleanNotes) changes.push({ field: 'notes', old: existingItem.notes || '', next: cleanNotes || '-' });
+    changes.push({ field: 'file', next: item.relativePath });
     this.appendLog({
       action: 'task_edited',
       entity: 'task',
+      source,
       title: item.title,
       detail: cleanNotes,
       project: cleanProject,
+      relativePath: item.relativePath,
       fromStatus: existingItem.status,
       toStatus: cleanStatus,
+      changes,
     });
     return item;
   }
 
-  updateTaskStatus(filePath, nextStatusRaw) {
+  updateTaskStatus(filePath, nextStatusRaw, source = 'ai') {
     const resolved = path.resolve(String(filePath || ''));
     const vaultResolved = path.resolve(this.vaultDir);
     if (!resolved.startsWith(vaultResolved) || !fs.existsSync(resolved)) {
@@ -566,10 +640,16 @@ export class MemoryVault {
     this.appendLog({
       action: 'task_moved',
       entity: 'task',
+      source,
       title: item.title,
       project: item.project,
+      relativePath: item.relativePath,
       fromStatus: prevItem.status,
       toStatus: nextStatus,
+      changes: [
+        { field: 'status', old: prevItem.status, next: nextStatus },
+        { field: 'file', next: item.relativePath },
+      ],
     });
     return item;
   }
@@ -662,7 +742,7 @@ export class MemoryVault {
     return { ...item, content: raw };
   }
 
-  deleteNote(filePath) {
+  deleteNote(filePath, source = 'ai') {
     const resolved = path.resolve(String(filePath || ''));
     const vaultResolved = path.resolve(this.vaultDir);
     if (!resolved.startsWith(vaultResolved)) {
@@ -677,7 +757,15 @@ export class MemoryVault {
     }
     fs.unlinkSync(resolved);
     if (info) {
-      this.appendLog({ action: 'note_deleted', entity: info.kind, title: info.title, project: info.project });
+      this.appendLog({
+        action: 'note_deleted',
+        entity: info.kind,
+        source,
+        title: info.title,
+        project: info.project,
+        relativePath: info.relativePath,
+        changes: [{ field: 'file', next: info.relativePath }],
+      });
     }
     return true;
   }

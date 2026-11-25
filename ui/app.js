@@ -384,6 +384,8 @@ const state = {
   vault: null,
   logs: [],
   logFilter: '',
+  logCat: 'all',
+  expandedLogs: new Set(),
   vaultFilter: 'all',
   taskProjectFilter: '__all__',
   vaultSearchQuery: '',
@@ -809,7 +811,7 @@ async function handleSaveHandoff(e) {
     return;
   }
   try {
-    const res = await callTool('save_handoff', { title, summary, openItems, nextStep, lang: state.lang });
+    const res = await callTool('save_handoff', { title, summary, openItems, nextStep, lang: state.lang, source: 'antigravity' });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
     state.vaultSearchResults = null;
@@ -835,7 +837,7 @@ async function handleSaveDecision(e) {
     return;
   }
   try {
-    const res = await callTool('save_decision', { title, decision, rationale, tags, lang: state.lang });
+    const res = await callTool('save_decision', { title, decision, rationale, tags, lang: state.lang, source: 'antigravity' });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
     state.vaultSearchResults = null;
@@ -858,7 +860,7 @@ async function handleCaptureResource(e) {
     return;
   }
   try {
-    const res = await callTool('capture_resource', { title, sourceType, urlOrPath, notes, lang: state.lang });
+    const res = await callTool('capture_resource', { title, sourceType, urlOrPath, notes, lang: state.lang, source: 'antigravity' });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
     state.vaultSearchResults = null;
@@ -891,8 +893,9 @@ async function handleSaveTask(e) {
           priority,
           notes,
           lang: state.lang,
+          source: 'antigravity',
         })
-      : await callTool('save_task', { title, project, status, priority, notes, lang: state.lang });
+      : await callTool('save_task', { title, project, status, priority, notes, lang: state.lang, source: 'antigravity' });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
     state.editingTaskPath = null;
@@ -906,7 +909,7 @@ async function handleSaveTask(e) {
 
 async function handleUpdateTaskStatus(filePath, status) {
   try {
-    const res = await callTool('update_task_status', { path: filePath, status });
+    const res = await callTool('update_task_status', { path: filePath, status, source: 'antigravity' });
     if (res?.vault) state.vault = res.vault;
     if (state.vaultSearchQuery) {
       const sres = await callTool('search_vault', { query: state.vaultSearchQuery, limit: 25 });
@@ -993,7 +996,7 @@ async function handleSendVaultNote(filePath, title) {
 
 async function handleDeleteVaultNote(filePath) {
   try {
-    const res = await callTool('delete_vault_note', { path: filePath });
+    const res = await callTool('delete_vault_note', { path: filePath, source: 'antigravity' });
     if (res?.vault) state.vault = res.vault;
     if (state.vaultSearchQuery) {
       const sres = await callTool('search_vault', { query: state.vaultSearchQuery, limit: 25 });
@@ -1993,7 +1996,39 @@ function renderMemory() {
   `;
 }
 
+function formatDayHeading(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  const now = new Date();
+  const locale = state.lang === 'tr' ? 'tr-TR' : 'en-US';
+  const dateText = d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+  if (d.toDateString() === now.toDateString()) return `${state.lang === 'tr' ? 'Bugün' : 'Today'} · ${dateText}`;
+  if (d.toDateString() === new Date(now.getTime() - 86400000).toDateString()) return `${state.lang === 'tr' ? 'Dün' : 'Yesterday'} · ${dateText}`;
+  return dateText;
+}
+
+function logFieldLabel(field) {
+  const tr = {
+    title: 'Başlık', status: 'Durum', notes: 'Açıklama', project: 'Proje', priority: 'Öncelik',
+    summary: 'Sonuç', openItems: 'Açık Konular', nextStep: 'Sonraki Adım',
+    decision: 'Karar', rationale: 'Gerekçe', source: 'Kaynak', file: 'Dosya',
+  };
+  const en = {
+    title: 'Title', status: 'Status', notes: 'Description', project: 'Project', priority: 'Priority',
+    summary: 'Outcome', openItems: 'Open Items', nextStep: 'Next Step',
+    decision: 'Decision', rationale: 'Rationale', source: 'Source', file: 'File',
+  };
+  return (state.lang === 'tr' ? tr : en)[field] || field;
+}
+
+function logSourceLabel(src) {
+  if (src === 'web') return 'Web';
+  if (src === 'antigravity') return 'Antigravity';
+  return state.lang === 'tr' ? 'AI Ajan' : 'AI Agent';
+}
+
 function renderLogs() {
+  const isTr = state.lang === 'tr';
   const statusMap = {
     inbox: t('colInbox'),
     active: t('colActive'),
@@ -2001,40 +2036,99 @@ function renderLogs() {
     done: t('colDone'),
     cancelled: t('colCancelled'),
   };
-  const q = state.logFilter.trim().toLowerCase();
-  const filtered = q
-    ? state.logs.filter((l) =>
-        `${l.title} ${l.detail} ${l.project} ${l.action} ${l.fromStatus} ${l.toStatus}`
-          .toLowerCase()
-          .includes(q)
-      )
-    : state.logs;
+  const cats = [
+    { id: 'all', label: isTr ? 'Tümü' : 'All' },
+    { id: 'task', label: isTr ? 'Görevler' : 'Tasks' },
+    { id: 'vault', label: isTr ? 'Oturum & Karar' : 'Sessions & Decisions' },
+    { id: 'delete', label: isTr ? 'Silinenler' : 'Deleted' },
+  ];
 
+  const q = state.logFilter.trim().toLowerCase();
+  const filtered = state.logs.filter((l) => {
+    if (state.logCat === 'task' && l.entity !== 'task') return false;
+    if (state.logCat === 'vault' && !['handoff', 'decision', 'inbox', 'pack'].includes(l.entity)) return false;
+    if (state.logCat === 'delete' && !l.action.includes('delete')) return false;
+    if (!q) return true;
+    return `${l.title} ${l.detail} ${l.project} ${l.action} ${l.relativePath || ''}`.toLowerCase().includes(q);
+  });
+
+  const byDay = new Map();
+  for (const l of filtered) {
+    const key = formatDayHeading(l.timestamp);
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(l);
+  }
+
+  const fmtVal = (field, val) => (field === 'status' ? statusMap[val] || val : val);
   const actionsMap = t('logActions');
-  const rows = filtered
-    .map((l) => {
-      const actionLabel = (actionsMap && actionsMap[l.action]) || l.action;
-      const badgeKind = l.action.includes('delete') ? 'inbox' : l.entity || 'decision';
-      const moveText =
-        l.fromStatus && l.toStatus && l.fromStatus !== l.toStatus
-          ? `${statusMap[l.fromStatus] || l.fromStatus} → ${statusMap[l.toStatus] || l.toStatus}`
-          : l.toStatus
-            ? `${statusMap[l.toStatus] || l.toStatus}`
-            : '';
+
+  const groupsHtml = [...byDay.entries()]
+    .map(([day, items]) => {
+      const rows = items
+        .map((l) => {
+          const actionLabel = (actionsMap && actionsMap[l.action]) || l.action;
+          const badgeKind = l.action.includes('delete') ? 'inbox' : l.entity || 'decision';
+          const moveText =
+            l.fromStatus && l.toStatus && l.fromStatus !== l.toStatus
+              ? `${statusMap[l.fromStatus] || l.fromStatus} → ${statusMap[l.toStatus] || l.toStatus}`
+              : l.toStatus
+                ? `${statusMap[l.toStatus] || l.toStatus}`
+                : '';
+          const isOpen = state.expandedLogs.has(l.id);
+          const changes =
+            Array.isArray(l.changes) && l.changes.length > 0
+              ? l.changes
+              : [
+                  ...(l.detail ? [{ field: 'notes', next: l.detail }] : []),
+                  ...(l.relativePath ? [{ field: 'file', next: l.relativePath }] : []),
+                ];
+          const changesHtml =
+            isOpen && changes.length > 0
+              ? `<div class="log-changes">${changes
+                  .map(
+                    (c) => `
+                  <div class="log-change-row">
+                    <span class="log-change-k">${esc(logFieldLabel(c.field))}:</span>
+                    <span class="log-change-v">
+                      ${c.old ? `<span class="log-old">${esc(fmtVal(c.field, c.old))}</span>→ ` : ''}${esc(fmtVal(c.field, c.next))}
+                    </span>
+                  </div>
+                `
+                  )
+                  .join('')}</div>`
+              : '';
+
+          const timeOnly = new Date(l.timestamp).toLocaleTimeString(isTr ? 'tr-TR' : 'en-GB', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+          });
+
+          return `
+            <div class="log-card" data-alog-toggle="${esc(l.id)}">
+              <div class="log-top">
+                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                  <span class="kind-badge kind-${esc(badgeKind)}">${esc(actionLabel)}</span>
+                  <span class="tag">${esc(logSourceLabel(l.source))}</span>
+                </div>
+                <span class="log-ts">${esc(timeOnly)} · ${esc(fmtRelativeTime(l.timestamp))} ${changes.length > 0 ? (isOpen ? '▴' : '▾') : ''}</span>
+              </div>
+              <div style="font-size:12px;font-weight:700;color:var(--fg-1);">
+                ${esc(l.title || '-')}
+                ${moveText ? `<span class="tag" style="margin-left:4px;">${esc(moveText)}</span>` : ''}
+                ${l.project ? `<span class="tag" style="margin-left:4px;">#${esc(l.project)}</span>` : ''}
+              </div>
+              ${!isOpen && l.detail ? `<div class="log-detail">${esc(l.detail)}</div>` : ''}
+              ${changesHtml}
+            </div>
+          `;
+        })
+        .join('');
 
       return `
-        <div class="log-card">
-          <div class="log-top">
-            <span class="kind-badge kind-${esc(badgeKind)}">${esc(actionLabel)}</span>
-            <span class="log-ts">${esc(fmtDateTime(l.timestamp))} · ${esc(fmtRelativeTime(l.timestamp))}</span>
-          </div>
-          <div style="font-size:12px;font-weight:700;color:var(--fg-1);">
-            ${esc(l.title || '-')}
-            ${moveText ? `<span class="tag" style="margin-left:4px;">${esc(moveText)}</span>` : ''}
-            ${l.project ? `<span class="tag" style="margin-left:4px;">#${esc(l.project)}</span>` : ''}
-          </div>
-          ${l.detail ? `<div class="log-detail">${esc(l.detail)}</div>` : ''}
+        <div class="log-day-head">
+          <span>📅 ${esc(day)}</span>
+          <span>${items.length}</span>
         </div>
+        ${rows}
       `;
     })
     .join('');
@@ -2044,8 +2138,11 @@ function renderLogs() {
       <input id="logFilterInput" class="input search-input" placeholder="${esc(t('logFilterPh'))}" value="${esc(state.logFilter)}" />
       <button id="btnClearLogs" class="btn btn-danger btn-sm">${esc(t('logClearBtn'))}</button>
     </div>
+    <div class="filter-pills">
+      ${cats.map((c) => `<button class="pill-btn ${state.logCat === c.id ? 'active' : ''}" data-alog-cat="${c.id}">${esc(c.label)}</button>`).join('')}
+    </div>
     <div class="pack-list">
-      ${rows || `<div class="card"><div class="empty">${esc(t('logEmpty'))}</div></div>`}
+      ${groupsHtml || `<div class="card"><div class="empty">${esc(t('logEmpty'))}</div></div>`}
     </div>
   `;
 }
@@ -2117,6 +2214,22 @@ function bindEvents() {
     render();
     const inp = document.getElementById('logFilterInput');
     if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+  });
+
+  document.querySelectorAll('[data-alog-cat]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.logCat = btn.dataset.alogCat;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-alog-toggle]').forEach((card) => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.alogToggle;
+      if (state.expandedLogs.has(id)) state.expandedLogs.delete(id);
+      else state.expandedLogs.add(id);
+      render();
+    });
   });
 
   document.getElementById('btnRefreshVault')?.addEventListener('click', () => {

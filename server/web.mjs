@@ -173,43 +173,43 @@ export function startWebServer({
 
       if (req.method === 'POST' && pathname === '/api/tasks') {
         const body = await readBodyJson(req);
-        const item = vault.saveTask(body);
-        sendJson(res, 200, { item, vault: vault.list('all', 200) });
+        const item = vault.saveTask({ ...body, source: 'web' });
+        sendJson(res, 200, { item, vault: vault.list('all', 200), logs: vault.listLogs(200) });
         return;
       }
 
       if (req.method === 'POST' && pathname === '/api/tasks/update') {
         const body = await readBodyJson(req);
-        const item = vault.updateTask(body);
-        sendJson(res, 200, { item, vault: vault.list('all', 200) });
+        const item = vault.updateTask({ ...body, source: 'web' });
+        sendJson(res, 200, { item, vault: vault.list('all', 200), logs: vault.listLogs(200) });
         return;
       }
 
       if (req.method === 'POST' && pathname === '/api/tasks/status') {
         const body = await readBodyJson(req);
-        const item = vault.updateTaskStatus(body.path, body.status);
-        sendJson(res, 200, { item, vault: vault.list('all', 200) });
+        const item = vault.updateTaskStatus(body.path, body.status, 'web');
+        sendJson(res, 200, { item, vault: vault.list('all', 200), logs: vault.listLogs(200) });
         return;
       }
 
       if (req.method === 'POST' && pathname === '/api/handoff') {
         const body = await readBodyJson(req);
-        const item = vault.saveHandoff(body);
-        sendJson(res, 200, { item, vault: vault.list('all', 200) });
+        const item = vault.saveHandoff({ ...body, source: 'web' });
+        sendJson(res, 200, { item, vault: vault.list('all', 200), logs: vault.listLogs(200) });
         return;
       }
 
       if (req.method === 'POST' && pathname === '/api/decision') {
         const body = await readBodyJson(req);
-        const item = vault.saveDecision(body);
-        sendJson(res, 200, { item, vault: vault.list('all', 200) });
+        const item = vault.saveDecision({ ...body, source: 'web' });
+        sendJson(res, 200, { item, vault: vault.list('all', 200), logs: vault.listLogs(200) });
         return;
       }
 
       if (req.method === 'POST' && pathname === '/api/capture') {
         const body = await readBodyJson(req);
-        const item = vault.captureResource(body);
-        sendJson(res, 200, { item, vault: vault.list('all', 200) });
+        const item = vault.captureResource({ ...body, source: 'web' });
+        sendJson(res, 200, { item, vault: vault.list('all', 200), logs: vault.listLogs(200) });
         return;
       }
 
@@ -227,8 +227,8 @@ export function startWebServer({
 
       if (req.method === 'POST' && pathname === '/api/note/delete') {
         const body = await readBodyJson(req);
-        const deleted = vault.deleteNote(body.path);
-        sendJson(res, 200, { deleted, vault: vault.list('all', 200) });
+        const deleted = vault.deleteNote(body.path, 'web');
+        sendJson(res, 200, { deleted, vault: vault.list('all', 200), logs: vault.listLogs(200) });
         return;
       }
 

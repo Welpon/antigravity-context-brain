@@ -287,12 +287,42 @@
     .heavy-head { font-size: 12px; font-weight: 600; color: var(--fg); }
     .heavy-desc { font-size: 11.5px; color: var(--fg-2); margin-top: 2px; }
     .heavy-tok { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--fg-2); flex-shrink: 0; }
-    .log-list { display: flex; flex-direction: column; gap: 8px; }
-    .log-row {
-      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-      padding: 10px 12px; border-radius: 8px; background: var(--card);
-      border: 1px solid var(--border);
+    .log-list { display: flex; flex-direction: column; gap: 12px; }
+    .log-day-head {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11.5px; font-weight: 700; color: var(--fg-2);
+      padding: 4px 2px; border-bottom: 1px solid var(--border);
+      margin-bottom: 6px;
     }
+    .log-row {
+      display: flex; flex-direction: column; gap: 6px;
+      padding: 10px 12px; border-radius: 8px; background: var(--card);
+      border: 1px solid var(--border); cursor: pointer;
+    }
+    .log-row:hover { border-color: var(--border-2); }
+    .log-row-top {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    }
+    .log-changes {
+      border-top: 1px solid var(--border);
+      padding-top: 7px; display: flex; flex-direction: column; gap: 4px;
+      font-size: 11.5px;
+    }
+    .log-change-line { display: flex; align-items: baseline; gap: 8px; }
+    .log-change-k { color: var(--fg-3); min-width: 84px; font-weight: 600; flex-shrink: 0; }
+    .log-change-v { font-family: var(--mono); color: var(--fg); word-break: break-word; }
+    .log-old { text-decoration: line-through; opacity: 0.55; margin-right: 6px; }
+    .log-source {
+      font-size: 10px; font-family: var(--mono); padding: 1px 6px;
+      border-radius: 4px; background: var(--bg); border: 1px solid var(--border);
+      color: var(--fg-2);
+    }
+    .pill-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .pill {
+      border: 1px solid var(--border); background: var(--card); color: var(--fg-2);
+      border-radius: 999px; padding: 4px 10px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+    }
+    .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
     .log-time {
       text-align: right; font-family: var(--mono); font-size: 11px; color: var(--fg-3);
       flex-shrink: 0; white-space: nowrap;
@@ -667,6 +697,8 @@
       searchQuery: '',
       searchResults: null,
       logFilter: '',
+      logCat: 'all',
+      expandedLogs: new Set(),
       expandedSpikes: new Set(),
       dragTaskPath: null,
       stopped: false,
@@ -1088,43 +1120,137 @@
       `;
     }
 
+    function formatDayHeading(iso) {
+      if (!iso) return '-';
+      const d = new Date(iso);
+      const now = new Date();
+      const todayKey = now.toDateString();
+      const yest = new Date(now.getTime() - 86400000).toDateString();
+      const locale = state.lang === 'tr' ? 'tr-TR' : 'en-US';
+      const dateText = d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+      if (d.toDateString() === todayKey) return `${state.lang === 'tr' ? 'Bugün' : 'Today'} · ${dateText}`;
+      if (d.toDateString() === yest) return `${state.lang === 'tr' ? 'Dün' : 'Yesterday'} · ${dateText}`;
+      return dateText;
+    }
+
+    function logFieldLabel(field) {
+      const tr = {
+        title: 'Başlık', status: 'Durum', notes: 'Açıklama', project: 'Proje', priority: 'Öncelik',
+        summary: 'Sonuç', openItems: 'Açık Konular', nextStep: 'Sonraki Adım',
+        decision: 'Karar', rationale: 'Gerekçe', source: 'Kaynak', file: 'Dosya',
+      };
+      const en = {
+        title: 'Title', status: 'Status', notes: 'Description', project: 'Project', priority: 'Priority',
+        summary: 'Outcome', openItems: 'Open Items', nextStep: 'Next Step',
+        decision: 'Decision', rationale: 'Rationale', source: 'Source', file: 'File',
+      };
+      return (state.lang === 'tr' ? tr : en)[field] || field;
+    }
+
+    function logSourceLabel(src) {
+      if (src === 'web') return 'Web';
+      if (src === 'antigravity') return 'Antigravity';
+      return state.lang === 'tr' ? 'AI Ajan' : 'AI Agent';
+    }
+
     function renderLogView() {
       const allLogs = state.data?.logs || [];
-      const q = state.logFilter.trim().toLowerCase();
-      const filtered = q
-        ? allLogs.filter((l) =>
-            `${l.title} ${l.detail} ${l.project} ${l.action} ${l.fromStatus} ${l.toStatus}`
-              .toLowerCase()
-              .includes(q)
-          )
-        : allLogs;
+      const isTr = state.lang === 'tr';
+      const cats = [
+        { id: 'all', label: isTr ? 'Tümü' : 'All' },
+        { id: 'task', label: isTr ? 'Görevler' : 'Tasks' },
+        { id: 'vault', label: isTr ? 'Oturum & Karar' : 'Sessions & Decisions' },
+        { id: 'delete', label: isTr ? 'Silinenler' : 'Deleted' },
+      ];
 
-      const rows = filtered
-        .map((l) => {
-          const actionText = t('logActions')[l.action] || l.action;
-          const badgeKind = l.action.includes('delete') ? 'inbox' : l.entity || 'decision';
-          const statusMove =
-            l.fromStatus && l.toStatus && l.fromStatus !== l.toStatus
-              ? `${t('cols')[l.fromStatus] || l.fromStatus} → ${t('cols')[l.toStatus] || l.toStatus}`
-              : l.toStatus
-                ? `${t('cols')[l.toStatus] || l.toStatus}`
-                : '';
+      const q = state.logFilter.trim().toLowerCase();
+      const filtered = allLogs.filter((l) => {
+        if (state.logCat === 'task' && l.entity !== 'task') return false;
+        if (state.logCat === 'vault' && !['handoff', 'decision', 'inbox', 'pack'].includes(l.entity)) return false;
+        if (state.logCat === 'delete' && !l.action.includes('delete')) return false;
+        if (!q) return true;
+        return `${l.title} ${l.detail} ${l.project} ${l.action} ${l.relativePath || ''}`.toLowerCase().includes(q);
+      });
+
+      const byDay = new Map();
+      for (const l of filtered) {
+        const key = formatDayHeading(l.timestamp);
+        if (!byDay.has(key)) byDay.set(key, []);
+        byDay.get(key).push(l);
+      }
+
+      const fmtVal = (field, val) => (field === 'status' ? t('cols')[val] || val : val);
+
+      const groupsHtml = [...byDay.entries()]
+        .map(([day, items]) => {
+          const rows = items
+            .map((l) => {
+              const actionText = t('logActions')[l.action] || l.action;
+              const badgeKind = l.action.includes('delete') ? 'inbox' : l.entity || 'decision';
+              const statusMove =
+                l.fromStatus && l.toStatus && l.fromStatus !== l.toStatus
+                  ? `${t('cols')[l.fromStatus] || l.fromStatus} → ${t('cols')[l.toStatus] || l.toStatus}`
+                  : l.toStatus
+                    ? `${t('cols')[l.toStatus] || l.toStatus}`
+                    : '';
+              const isOpen = state.expandedLogs.has(l.id);
+              const changes = Array.isArray(l.changes) && l.changes.length > 0
+                ? l.changes
+                : [
+                    ...(l.detail ? [{ field: 'notes', next: l.detail }] : []),
+                    ...(l.relativePath ? [{ field: 'file', next: l.relativePath }] : []),
+                  ];
+              const changesHtml =
+                isOpen && changes.length > 0
+                  ? `<div class="log-changes">${changes
+                      .map(
+                        (c) => `
+                      <div class="log-change-line">
+                        <span class="log-change-k">${esc(logFieldLabel(c.field))}:</span>
+                        <span class="log-change-v">
+                          ${c.old ? `<span class="log-old">${esc(fmtVal(c.field, c.old))}</span>→ ` : ''}${esc(fmtVal(c.field, c.next))}
+                        </span>
+                      </div>
+                    `
+                      )
+                      .join('')}</div>`
+                  : '';
+
+              const timeOnly = new Date(l.timestamp).toLocaleTimeString(isTr ? 'tr-TR' : 'en-GB', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+              });
+
+              return `
+                <div class="log-row" data-log-toggle="${esc(l.id)}">
+                  <div class="log-row-top">
+                    <div style="min-width:0;flex:1;">
+                      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                        <span class="badge badge-${esc(badgeKind)}">${esc(actionText)}</span>
+                        <strong style="font-size:13px;">${esc(l.title || '-')}</strong>
+                        ${statusMove ? `<span class="spike-pill">${esc(statusMove)}</span>` : ''}
+                        ${l.project ? `<span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">#${esc(l.project)}</span>` : ''}
+                        <span class="log-source">${esc(logSourceLabel(l.source))}</span>
+                      </div>
+                      ${!isOpen && l.detail ? `<div style="font-size:12px;color:var(--fg-2);margin-top:4px;">${esc(l.detail)}</div>` : ''}
+                    </div>
+                    <div class="log-time">
+                      <div>${esc(timeOnly)}</div>
+                      <div class="log-rel">${esc(fmtRel(l.timestamp))} ${changes.length > 0 ? (isOpen ? '▴' : '▾') : ''}</div>
+                    </div>
+                  </div>
+                  ${changesHtml}
+                </div>
+              `;
+            })
+            .join('');
 
           return `
-            <div class="log-row">
-              <div style="min-width:0;flex:1;">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <span class="badge badge-${esc(badgeKind)}">${esc(actionText)}</span>
-                  <strong style="font-size:13px;">${esc(l.title || '-')}</strong>
-                  ${statusMove ? `<span class="spike-pill">${esc(statusMove)}</span>` : ''}
-                  ${l.project ? `<span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">#${esc(l.project)}</span>` : ''}
-                </div>
-                ${l.detail ? `<div style="font-size:12px;color:var(--fg-2);margin-top:4px;">${esc(l.detail)}</div>` : ''}
+            <div>
+              <div class="log-day-head">
+                <span>📅 ${esc(day)}</span>
+                <span style="font-family:var(--mono);color:var(--fg-3);">${items.length} ${isTr ? 'kayıt' : 'entries'}</span>
               </div>
-              <div class="log-time">
-                <div>${esc(fmtDateTime(l.timestamp))}</div>
-                <div class="log-rel">${esc(fmtRel(l.timestamp))}</div>
-              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">${rows}</div>
             </div>
           `;
         })
@@ -1141,7 +1267,10 @@
             <button id="btnClearLogs" class="btn btn-danger">${esc(t('logClearBtn'))}</button>
           </div>
         </div>
-        <div class="log-list">${rows || `<div class="card">${esc(t('logEmpty'))}</div>`}</div>
+        <div class="pill-row">
+          ${cats.map((c) => `<button class="pill ${state.logCat === c.id ? 'active' : ''}" data-log-cat="${c.id}">${esc(c.label)}</button>`).join('')}
+        </div>
+        <div class="log-list">${groupsHtml || `<div class="card">${esc(t('logEmpty'))}</div>`}</div>
       `;
     }
 
@@ -1357,6 +1486,22 @@
         await api('/api/logs/clear', { method: 'POST' });
         showToast(t('toastDeleted'));
         await loadState(true);
+      });
+
+      document.querySelectorAll('[data-log-cat]').forEach((btn) => {
+        btn.onclick = () => {
+          state.logCat = btn.dataset.logCat;
+          render();
+        };
+      });
+
+      document.querySelectorAll('[data-log-toggle]').forEach((el) => {
+        el.onclick = () => {
+          const id = el.dataset.logToggle;
+          if (state.expandedLogs.has(id)) state.expandedLogs.delete(id);
+          else state.expandedLogs.add(id);
+          render();
+        };
       });
     }
 

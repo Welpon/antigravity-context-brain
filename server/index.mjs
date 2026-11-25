@@ -702,7 +702,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     if (name === 'update_task_status') {
-      const item = memoryVault.updateTaskStatus(args.path, args.status);
+      const item = memoryVault.updateTaskStatus(args.path, args.status, args.source || 'ai');
       const vault = memoryVault.list('all', 40);
       return {
         content: [{ type: 'text', text: `Task moved: ${item.title} -> ${item.status}` }],
@@ -731,7 +731,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     if (name === 'delete_vault_note') {
-      const deleted = memoryVault.deleteNote(args.path);
+      const deleted = memoryVault.deleteNote(args.path, args.source || 'ai');
       const vault = memoryVault.list('all', 40);
       return {
         content: [{ type: 'text', text: deleted ? 'Note deleted.' : 'Note not found.' }],

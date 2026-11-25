@@ -60,6 +60,12 @@
     .brand-name { font-weight: 700; font-size: 14px; }
     .brand-sub { font-size: 11px; color: var(--fg-3); font-family: var(--mono); }
     .nav { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+    .nav-group {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      color: var(--fg-3); text-transform: uppercase;
+      padding: 10px 10px 4px;
+    }
+    .nav-group:first-child { padding-top: 4px; }
     .nav-btn {
       display: flex; align-items: center; justify-content: space-between;
       border: 1px solid transparent; background: transparent; color: var(--fg-2);
@@ -228,10 +234,25 @@
     .badge-decision { background: rgba(79, 140, 255, 0.16); color: #60a5fa; }
     .badge-task { background: rgba(168, 85, 247, 0.16); color: #c084fc; }
     .badge-inbox { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+    .spike-item {
+      border-radius: 7px; background: var(--sidebar);
+      border: 1px solid transparent; overflow: hidden;
+    }
+    .spike-item:hover { border-color: var(--border); }
     .spike-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 7px 10px; border-radius: 7px; background: var(--sidebar);
-      font-family: var(--mono); font-size: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 7px 10px; font-family: var(--mono); font-size: 12px;
+      cursor: pointer;
+    }
+    .spike-tools {
+      border-top: 1px solid var(--border);
+      padding: 6px 12px 8px 28px;
+      display: flex; flex-direction: column; gap: 3px;
+      font-size: 11.5px; color: var(--fg-2);
+    }
+    .spike-pill {
+      font-size: 10.5px; background: var(--card-2); color: var(--fg-2);
+      padding: 1px 6px; border-radius: 4px; margin-right: 6px;
     }
 
     /* Modal */
@@ -275,9 +296,11 @@
   <script>
     const I18N = {
       en: {
+        catMonitor: 'MONITOR',
+        catMemory: 'MEMORY',
+        navOverview: 'Overview',
         navTasks: 'Tasks',
-        navCockpit: 'Cockpit',
-        navMemory: 'Memory',
+        navMemory: 'Notes & Vault',
         navSearch: 'Search',
         sync: 'Sync',
         stopServer: 'Stop Server',
@@ -297,7 +320,7 @@
           cancelled: 'CANCELLED',
         },
         prio: { high: 'High', normal: 'Normal', low: 'Low' },
-        cockpitTitle: 'Context Cockpit',
+        cockpitTitle: 'Context Overview',
         cockpitSub: 'Live token telemetry from your Antigravity conversations.',
         cache: 'Cache',
         uncached: 'Uncached',
@@ -306,6 +329,7 @@
         output: 'Output',
         turns: 'Turns',
         topSpikes: 'Top Spikes',
+        toolsUnit: 'tools',
         memoryTitle: 'Memory Vault',
         memorySub: 'Sessions, decisions, inbox captures, and tasks stored as Markdown.',
         searchTitle: 'Smart Search',
@@ -320,9 +344,11 @@
         toastDeleted: 'Deleted.',
       },
       tr: {
+        catMonitor: 'İZLEYİCİ',
+        catMemory: 'HAFIZA',
+        navOverview: 'Genel Bakış',
         navTasks: 'Görevler',
-        navCockpit: 'Kokpit',
-        navMemory: 'Hafıza',
+        navMemory: 'Notlar & Kasa',
         navSearch: 'Arama',
         sync: 'Eşitle',
         stopServer: 'Sunucuyu Kapat',
@@ -342,7 +368,7 @@
           cancelled: 'İPTAL',
         },
         prio: { high: 'Yüksek', normal: 'Normal', low: 'Düşük' },
-        cockpitTitle: 'Bağlam Kokpiti',
+        cockpitTitle: 'Genel Bakış',
         cockpitSub: 'Antigravity konuşmalarının canlı token ve önbellek telemetrisi.',
         cache: 'Önbellek',
         uncached: 'Önbelleksiz',
@@ -351,6 +377,7 @@
         output: 'Çıktı',
         turns: 'Tur',
         topSpikes: 'En Büyük Sıçramalar',
+        toolsUnit: 'araç',
         memoryTitle: 'Hafıza Kasası',
         memorySub: 'Oturumlar, kararlar, yakalananlar ve görevler düz Markdown olarak saklanır.',
         searchTitle: 'Akıllı Arama',
@@ -366,6 +393,35 @@
       },
     };
 
+    const TOOL_LABELS_TR = {
+      read_file: 'Dosya Oku',
+      write_file: 'Dosya Yaz',
+      edit_file: 'Dosya Düzenle',
+      run_command: 'Komut Çalıştır',
+      search_web: 'Web Ara',
+      search_marketplace: 'Mağaza Ara',
+      ask_question: 'Soru Sor',
+      manage_task: 'Görev Yönet',
+      invoke_subagent: 'Alt Ajan',
+      send_message: 'Mesaj Gönder',
+      update_steps: 'Adım Güncelle',
+      update_focus: 'Odak Güncelle',
+      list_dir: 'Dizin Listele',
+      grep_search: 'Metin Ara',
+      find_by_name: 'Dosya Bul',
+    };
+
+    function localizeLabel(label) {
+      if (!label) return '';
+      let text = String(label);
+      if (state.lang !== 'tr') return text;
+      text = text.replace(/^user · /, 'Kullanıcı · ');
+      for (const [raw, trName] of Object.entries(TOOL_LABELS_TR)) {
+        text = text.replace(new RegExp(`\\b${raw}\\b`, 'g'), trName);
+      }
+      return text;
+    }
+
     const COL_ORDER = ['inbox', 'active', 'waiting', 'done', 'cancelled'];
 
     const state = {
@@ -376,6 +432,7 @@
       selectedConvId: '',
       searchQuery: '',
       searchResults: null,
+      expandedSpikes: new Set(),
       dragTaskPath: null,
       stopped: false,
     };
@@ -560,14 +617,35 @@
       const uncachedPct = a.contextLimit > 0 ? Math.min(100 - cachePct, (a.latestInputTokens / a.contextLimit) * 100) : 0;
 
       const spikesHtml = (a.topSpikes || [])
-        .map(
-          (s) => `
-          <div class="spike-row">
-            <span>#${s.stepIndex} · ${esc(s.label)}</span>
-            <strong>+${fmtCompact(s.deltaTokens)}</strong>
-          </div>
-        `
-        )
+        .map((s) => {
+          const hasTools = Array.isArray(s.tools) && s.tools.length > 0;
+          const isOpen = hasTools && state.expandedSpikes.has(s.stepIndex);
+          const toolsList = isOpen
+            ? `<div class="spike-tools">${s.tools
+                .map((toolObj) => {
+                  const rawName = toolObj?.name || 'tool';
+                  const name = state.lang === 'tr' ? (TOOL_LABELS_TR[rawName] || rawName) : rawName;
+                  let target = toolObj?.target || '';
+                  if (!target && rawName === 'update_steps') target = state.lang === 'tr' ? 'görev listesi' : 'task checklist';
+                  if (!target && rawName === 'update_focus') target = state.lang === 'tr' ? 'durum özeti' : 'status focus';
+                  return `<div><span style="color:var(--accent);">•</span> <strong style="color:var(--fg);">${esc(name)}</strong>${target ? ` <span style="font-family:var(--mono);color:var(--fg-3);">· ${esc(target)}</span>` : ''}</div>`;
+                })
+                .join('')}</div>`
+            : '';
+          return `
+            <div class="spike-item">
+              <div class="spike-row" ${hasTools ? `data-wspike="${s.stepIndex}"` : ''}>
+                <span>
+                  <span style="color:var(--fg-3);margin-right:6px;">#${s.stepIndex}</span>
+                  ${s.toolCount > 1 ? `<span class="spike-pill">${s.toolCount} ${esc(t('toolsUnit'))} ${isOpen ? '▴' : '▾'}</span>` : ''}
+                  ${esc(localizeLabel(s.label))}
+                </span>
+                <strong>+${fmtCompact(s.deltaTokens)}</strong>
+              </div>
+              ${toolsList}
+            </div>
+          `;
+        })
         .join('');
 
       return `
@@ -692,11 +770,13 @@
                 </div>
               </div>
               <nav class="nav">
+                <div class="nav-group">${esc(t('catMonitor'))}</div>
+                <button class="nav-btn ${state.view === 'cockpit' ? 'active' : ''}" data-nav="cockpit">
+                  <span>📊 ${esc(t('navOverview'))}</span>
+                </button>
+                <div class="nav-group">${esc(t('catMemory'))}</div>
                 <button class="nav-btn ${state.view === 'tasks' ? 'active' : ''}" data-nav="tasks">
                   <span>📋 ${esc(t('navTasks'))}</span><span class="nav-count">${counts.task || 0}</span>
-                </button>
-                <button class="nav-btn ${state.view === 'cockpit' ? 'active' : ''}" data-nav="cockpit">
-                  <span>📊 ${esc(t('navCockpit'))}</span>
                 </button>
                 <button class="nav-btn ${state.view === 'memory' ? 'active' : ''}" data-nav="memory">
                   <span>🧠 ${esc(t('navMemory'))}</span><span class="nav-count">${counts.all || 0}</span>
@@ -802,6 +882,15 @@
 
       document.querySelectorAll('[data-open-note]').forEach((el) => {
         el.onclick = () => openNoteModal(el.dataset.openNote);
+      });
+
+      document.querySelectorAll('[data-wspike]').forEach((el) => {
+        el.onclick = () => {
+          const step = Number(el.dataset.wspike);
+          if (state.expandedSpikes.has(step)) state.expandedSpikes.delete(step);
+          else state.expandedSpikes.add(step);
+          render();
+        };
       });
 
       // Drag and drop between Kanban columns

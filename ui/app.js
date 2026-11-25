@@ -319,7 +319,7 @@ const I18N = {
 };
 
 const state = {
-  lang: 'tr',
+  lang: 'en',
   activeTab: 'monitor',
   analysis: null,
   packs: [],
@@ -1740,13 +1740,13 @@ function renderMemory() {
   return `
     <div class="vault-bar">
       <div class="vault-path-wrap">
-        <div class="vault-path" title="${esc(v?.vaultDir || '')}">📁 ${esc(v?.vaultDir || '~/Antigravity-Beyin')}</div>
+        <div class="vault-path" title="${esc(v?.vaultDir || '')}">📁 ${esc(v?.vaultDir || '~/Antigravity-Brain')}</div>
         <div class="vault-hint">${esc(t('vaultHint'))}</div>
       </div>
       ${
         v?.agentsFileUri
           ? `<button id="btnOpenAgents" class="btn btn-sm" data-uri="${esc(
-              state.lang === 'en' ? v.agentsEnFileUri || v.agentsFileUri : v.agentsFileUri
+              state.lang === 'tr' ? v.agentsTrFileUri || v.agentsFileUri : v.agentsFileUri
             )}">${esc(t('openAgents'))}</button>`
           : ''
       }

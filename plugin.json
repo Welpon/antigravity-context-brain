@@ -2,11 +2,11 @@
   "name": "context-window",
   "displayName": "Context Window",
   "version": "1.0.0",
-  "description": "Canlı context window ve token kullanım izleyici + tekrar kullanılabilir bağlam paketleri (context packs) yöneticisi. Konuşma doluluk oranını, cache verimliliğini ve en ağır adımları yan panelden izleyin.",
+  "description": "Live context window & token monitor + portable Markdown memory vault (sessions, tasks, decisions, inbox, and multi-file context packs) for Antigravity. Supports English and Turkish.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
-    "Mevcut konuşmanın context window kullanımını ve en ağır adımlarını göster",
-    "Context Window panelini yan panelde aç",
-    "Bu proje için yeni bir bağlam paketi (context pack) oluştur"
+    "Open the Context Window panel in the side pane",
+    "Show the current conversation's context usage, cache hit rate, and top spikes",
+    "Save this session's outcome and next step to my memory vault"
   ]
 }

@@ -19,16 +19,16 @@ All tools are exposed by the `context-window` MCP server (namespaced as `context
 5. `save_context_pack` — Creates or updates a Context Pack (`name`, `description`, `notes`, `files`, `tags`, optional `id`).
 6. `delete_context_pack` — Deletes a Context Pack by `id`.
 7. `resolve_context_pack` — Reads a Context Pack's notes and current local file contents as ready-to-use context.
-8. `list_vault` / `search_vault` / `read_vault_note` / `delete_vault_note` — Browse, search, read, and manage portable Markdown notes in `~/Antigravity-Beyin`.
-9. `save_handoff` — Save session summary, open items, and next step to `oturumlar/` so a new session can pick up seamlessly.
-10. `save_decision` — Record decisions and rationale in `kararlar/`.
-11. `capture_resource` — Quick-capture a video, article, file, or note into `gelen-kutusu/`.
-12. `save_task` / `toggle_task` — Create and complete cross-session tasks in `gorevler/`.
+8. `list_vault` / `search_vault` / `read_vault_note` / `delete_vault_note` — Browse, search, read, and manage portable Markdown notes in `~/Antigravity-Brain`.
+9. `save_handoff` — Save session summary, open items, and next step to `sessions/` so a new session can pick up seamlessly.
+10. `save_decision` — Record decisions and rationale in `decisions/`.
+11. `capture_resource` — Quick-capture a video, article, file, or note into `inbox/`.
+12. `save_task` / `toggle_task` — Create and complete cross-session tasks in `tasks/`.
 
 ## Memory Vault Workflows
 
 - **Tanışma / Profil ("Beni tanı"):** Ask the user 3–4 brief questions about their role, preferences, and active projects, then save their answers to the vault via `save_decision` or `save_handoff` so future sessions remember them.
-- **Yakalananları İşle ("Yakalananları işle"):** List `gelen-kutusu/` items via `list_vault(kind="inbox")`, read them with `read_vault_note`, and propose turning them into structured decisions or tasks (only write after user confirmation).
+- **Yakalananları İşle ("Yakalananları işle"):** List `inbox/` items via `list_vault(kind="inbox")`, read them with `read_vault_note`, and propose turning them into structured decisions or tasks (only write after user confirmation).
 - **Hafıza Kontrolü ("Hafızamı kontrol et"):** Audit open tasks and older notes via `list_vault`, flag anything potentially outdated, and never overwrite or delete without explicit user approval.
 
 ## Workflow Guidelines

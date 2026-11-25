@@ -222,7 +222,7 @@ const TOOLS = [
   {
     name: 'list_vault',
     title: 'List Memory Vault',
-    description: 'Taşınabilir Markdown hafıza kasasındaki (~/Antigravity-Beyin) oturum notlarını, kararları, görevleri ve yakalanan kaynakları listeler.',
+    description: 'Taşınabilir Markdown hafıza kasasındaki (~/Antigravity-Brain) oturum notlarını, kararları, görevleri ve yakalanan kaynakları listeler.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -268,7 +268,7 @@ const TOOLS = [
   {
     name: 'capture_resource',
     title: 'Quick Capture Resource',
-    description: 'Video, makale, dosya veya notu Yakala ile gelen kutusuna (gelen-kutusu/) Markdown olarak kaydeder.',
+    description: 'Video, makale, dosya veya notu Yakala ile gelen kutusuna (inbox/) Markdown olarak kaydeder.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -285,7 +285,7 @@ const TOOLS = [
   {
     name: 'save_task',
     title: 'Save Task',
-    description: 'Oturumlar arası takip edilen yeni bir görev (gorevler/) oluşturur.',
+    description: 'Oturumlar arası takip edilen yeni bir görev (tasks/) oluşturur.',
     inputSchema: {
       type: 'object',
       properties: {

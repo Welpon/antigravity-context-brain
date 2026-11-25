@@ -1,34 +1,32 @@
-# Katkıda Bulunma (Contributing)
+# Contributing
 
-Pull Request'ler, hata bildirimleri ve özellik önerileri her zaman memnuniyetle karşılanır!
+Pull requests, bug reports, and feature suggestions are very welcome!
 
-## Geliştirme Ortamı
+## Local Development
 
-1. Bu depoyu **Fork** edin ve yerel bilgisayarınıza klonlayın:
+1. **Fork** this repository and clone your fork:
    ```bash
-   git clone https://github.com/<KULLANICI_ADIN>/antigravity-context-window.git
+   git clone https://github.com/<YOUR_USERNAME>/antigravity-context-window.git
    cd antigravity-context-window
    npm install
    ```
-2. Yeni bir dal (branch) açın:
+2. Create a feature branch:
    ```bash
-   git checkout -b feat/yeni-ozellik
+   git checkout -b feat/your-feature
    ```
-3. Arayüz (`ui/app.js`, `ui/styles.css`) değişikliklerinden sonra tek dosya HTML çıktısını yeniden derleyin:
+3. After editing `ui/app.js` or `ui/styles.css`, rebuild the single-file MCP App bundle:
    ```bash
    npm run build:ui
    ```
-4. Değişikliklerinizi test edin:
-   - Eklenti klasörünü `~/.gemini/config/plugins/context-window` altında deneyebilirsiniz.
-   - `server/` değişiklikleri için Antigravity **MCP Servers** ayarlarından `context-window` sunucusunu yeniden başlatın.
-5. Değişikliklerinizi commit edip **Pull Request** açın:
+4. Test locally in Antigravity (`~/.gemini/config/plugins/context-window`). For changes in `server/`, restart the `context-window` MCP server from Antigravity **MCP Servers** settings.
+5. Commit and open a **Pull Request**:
    ```bash
    git add .
-   git commit -m "feat: açıklayıcı özet"
-   git push origin feat/yeni-ozellik
+   git commit -m "feat: clear description"
+   git push origin feat/your-feature
    ```
 
-## Kurallar
-- Kişisel dosya yolları, API anahtarları veya yerel kullanıcı adları eklemeyin (`os.homedir()` kullanın).
-- Yeni arayüz metinleri için hem `tr` hem `en` çevirilerini `ui/app.js` içindeki `I18N` sözlüğüne ekleyin.
-- `ui/` dosyalarını güncellediyseniz `npm run build:ui` ile güncellenmiş `server/app.html` dosyasını da PR'a dahil edin.
+## Guidelines
+- Never hardcode personal file paths, usernames, or API keys (always use `os.homedir()`).
+- Add both `en` and `tr` strings in `ui/app.js` (`I18N`) for any new UI labels.
+- If you modify `ui/`, include the rebuilt `server/app.html` (`npm run build:ui`) in your PR.

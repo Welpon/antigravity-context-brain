@@ -20,7 +20,7 @@ const bundledJs = jsResult.outputFiles[0].text;
 const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
 
 const html = `<!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

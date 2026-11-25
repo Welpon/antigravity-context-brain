@@ -3,13 +3,13 @@ import path from 'node:path';
 import os from 'node:os';
 import { estimateTokens } from './transcript.mjs';
 
-export const DEFAULT_VAULT_DIR = path.join(os.homedir(), 'Antigravity-Beyin');
+export const DEFAULT_VAULT_DIR = path.join(os.homedir(), 'Antigravity-Brain');
 
 const SUBDIRS = {
-  handoff: 'oturumlar',
-  decision: 'kararlar',
-  inbox: 'gelen-kutusu',
-  task: 'gorevler',
+  handoff: 'sessions',
+  decision: 'decisions',
+  inbox: 'inbox',
+  task: 'tasks',
 };
 
 const SEARCH_FILLERS = new Set([
@@ -79,29 +79,29 @@ function parseFrontmatter(raw) {
   return { meta, body: match[2].trim() };
 }
 
-const AGENTS_TR_CONTENT = `# Antigravity Beyin — Hafıza Sekmesi Rehberi
+const AGENTS_TR_CONTENT = `# Antigravity Brain — Hafıza Sekmesi Rehberi
 
-Bu klasör (\`~/Antigravity-Beyin\`), tüm notlarını, kararlarını, görevlerini ve kaynaklarını düz Markdown (\`.md\`) dosyaları olarak saklayan **taşınabilir hafıza kasandır**. Antigravity dışında **Claude Code, Codex, Cursor, Obsidian** veya herhangi bir metin editörüyle de doğrudan açıp kullanabilirsin.
+Bu klasör (\`~/Antigravity-Brain\`), tüm notlarını, kararlarını, görevlerini ve kaynaklarını düz Markdown (\`.md\`) dosyaları olarak saklayan **taşınabilir hafıza kasandır**. Antigravity dışında **Claude Code, Codex, Cursor, Obsidian** veya herhangi bir metin editörüyle de doğrudan açıp kullanabilirsin.
 
 ---
 
 ## Hafıza Sekmesindeki Tüm İşlevler
 
-### 1. 💾 Oturum Kaydet (\`oturumlar/\`)
+### 1. 💾 Oturum Kaydet (\`sessions/\`)
 - **Ne işe yarar?** Uzun bir çalışmayı bitirirken veya yeni bir sohbet açmadan önce **kaldığın yerden devam edebilmeni** sağlar.
 - **Neler kaydedilir?** Başlık, **Son İşin Sonucu**, **Açık Konular** ve **Sonraki Adım**.
 - **Nasıl kullanılır?** Yeni bir sohbet açtığında oturum kartındaki **\`📎 Bağlama Ekle\`** veya **\`↗ Gönder\`** butonuna bas; asistan bıraktığın yerden anında devam eder.
 
-### 2. ✅ Görev Ekle (\`gorevler/\`)
+### 2. ✅ Görev Ekle (\`tasks/\`)
 - **Ne işe yarar?** Sohbetler ve günler arasında unutmak istemediğin yapılacak işleri takip eder.
 - **Neler kaydedilir?** Görev başlığı, öncelik (\`Yüksek / Normal / Düşük\`) ve detay notları.
 - **Nasıl kullanılır?** İşini bitirdiğinde **\`☐ Tamamla\`** butonuna basarak **\`☑ Tamamlandı\`** durumuna geçirebilirsin.
 
-### 3. 🧭 Karar Ekle (\`kararlar/\`)
+### 3. 🧭 Karar Ekle (\`decisions/\`)
 - **Ne işe yarar?** *"Neden bu aracı / dili / tasarımı seçmiştik?"* sorusunu haftalar sonra bile kaynağından bulabilmeni sağlar.
 - **Neler kaydedilir?** Karar başlığı, **Alınan Karar**, **Gerekçe** ve aranabilir etiketler.
 
-### 4. ⚡ Yakala (\`gelen-kutusu/\`)
+### 4. ⚡ Yakala (\`inbox/\`)
 - **Ne işe yarar?** Karşına çıkan bir **video, makale, dosya veya fikri** kaybetmeden gelen kutuna almanı sağlar.
 - **İpucu:** Biriken kaynakları düzenlemek istediğinde sohbete ***"Yakalananları işle"*** yazabilirsin.
 
@@ -116,8 +116,8 @@ Bu klasör (\`~/Antigravity-Beyin\`), tüm notlarını, kararlarını, görevler
 
 ## Sohbetten Kullanabileceğin Komutlar
 - ***"Beni tanı"*** — Çalışma tarzını öğrenip hafızana kaydeder.
-- ***"Bu oturumu hafızaya kaydet"*** — Sonucu, açık konuları ve sonraki adımı \`oturumlar/\` altına yazar.
-- ***"Yakalananları işle"*** — \`gelen-kutusu/\` kayıtlarını özetleyip düzenlemene yardım eder.
+- ***"Bu oturumu hafızaya kaydet"*** — Sonucu, açık konuları ve sonraki adımı \`sessions/\` altına yazar.
+- ***"Yakalananları işle"*** — \`inbox/\` kayıtlarını özetleyip düzenlemene yardım eder.
 - ***"Hafızamı kontrol et"*** — Eski notları ve açık görevleri onayınla gözden geçirir.
 
 ## Yedekleme
@@ -126,27 +126,27 @@ Bu klasörü doğrudan kopyalayabilir, Google Drive / OneDrive ile eşitleyebili
 
 const AGENTS_EN_CONTENT = `# Antigravity Brain — Memory Tab Guide
 
-This folder (\`~/Antigravity-Beyin\`) is your **portable memory vault**, storing all notes, decisions, tasks, and captured resources as plain Markdown (\`.md\`) files. You can open and share it directly with **Claude Code, Codex, Cursor, Obsidian**, or any text editor.
+This folder (\`~/Antigravity-Brain\`) is your **portable memory vault**, storing all notes, decisions, tasks, and captured resources as plain Markdown (\`.md\`) files. You can open and share it directly with **Claude Code, Codex, Cursor, Obsidian**, or any text editor.
 
 ---
 
 ## Memory Tab Features
 
-### 1. 💾 Save Handoff (\`oturumlar/\`)
+### 1. 💾 Save Handoff (\`sessions/\`)
 - **What it does:** Lets you **pick up right where you left off** in a brand-new conversation.
 - **What it saves:** Title, **Outcome / Summary**, **Open Items**, and **Next Step**.
 - **How to use:** In a new chat, click **\`📎 Attach Context\`** or **\`↗ Send\`** on the handoff card so the assistant immediately continues your work.
 
-### 2. ✅ Add Task (\`gorevler/\`)
+### 2. ✅ Add Task (\`tasks/\`)
 - **What it does:** Tracks to-dos across sessions and days.
 - **What it saves:** Task title, priority (\`High / Normal / Low\`), and notes.
 - **How to use:** Click **\`☐ Mark Done\`** on a task card to toggle it to **\`☑ Done\`** (updates the Markdown checkbox to \`[x]\`).
 
-### 3. 🧭 Decision (\`kararlar/\`)
+### 3. 🧭 Decision (\`decisions/\`)
 - **What it does:** Records *why* you chose a specific tool, language, or design so you can find the exact source weeks later.
 - **What it saves:** Decision title, **Decision**, **Rationale**, and searchable tags.
 
-### 4. ⚡ Capture (\`gelen-kutusu/\`)
+### 4. ⚡ Capture (\`inbox/\`)
 - **What it does:** Quickly saves a **video, article, file, or idea** into your inbox without losing focus.
 - **Tip:** Say ***"Process my inbox"*** in chat to turn captured items into structured decisions or tasks.
 
@@ -161,8 +161,8 @@ This folder (\`~/Antigravity-Beyin\`) is your **portable memory vault**, storing
 
 ## Useful Chat Prompts
 - ***"Get to know me"*** — Asks a few short questions and saves your preferences to memory.
-- ***"Save this session to memory"*** — Summarizes outcome, open items, and next step into \`oturumlar/\`.
-- ***"Process my inbox"*** — Reviews items in \`gelen-kutusu/\` and helps organize them.
+- ***"Save this session to memory"*** — Summarizes outcome, open items, and next step into \`sessions/\`.
+- ***"Process my inbox"*** — Reviews items in \`inbox/\` and helps organize them.
 - ***"Audit my memory"*** — Reviews open tasks and older notes (never modifies without your approval).
 
 ## Backup
@@ -182,11 +182,11 @@ export class MemoryVault {
     }
     const agentsPath = path.join(this.vaultDir, 'AGENTS.md');
     if (!fs.existsSync(agentsPath)) {
-      fs.writeFileSync(agentsPath, AGENTS_TR_CONTENT, 'utf8');
+      fs.writeFileSync(agentsPath, AGENTS_EN_CONTENT, 'utf8');
     }
-    const agentsEnPath = path.join(this.vaultDir, 'AGENTS.en.md');
-    if (!fs.existsSync(agentsEnPath)) {
-      fs.writeFileSync(agentsEnPath, AGENTS_EN_CONTENT, 'utf8');
+    const agentsTrPath = path.join(this.vaultDir, 'AGENTS.tr.md');
+    if (!fs.existsSync(agentsTrPath)) {
+      fs.writeFileSync(agentsTrPath, AGENTS_TR_CONTENT, 'utf8');
     }
   }
 
@@ -201,6 +201,7 @@ export class MemoryVault {
         entry.isFile() &&
         /\.md$/i.test(entry.name) &&
         entry.name.toUpperCase() !== 'AGENTS.MD' &&
+        entry.name.toUpperCase() !== 'AGENTS.TR.MD' &&
         entry.name.toUpperCase() !== 'AGENTS.EN.MD'
       ) {
         acc.push(full);
@@ -211,10 +212,10 @@ export class MemoryVault {
 
   _inferKind(filePath) {
     const rel = path.relative(this.vaultDir, filePath).replace(/\\/g, '/');
-    if (rel.startsWith(`${SUBDIRS.handoff}/`)) return 'handoff';
-    if (rel.startsWith(`${SUBDIRS.decision}/`)) return 'decision';
-    if (rel.startsWith(`${SUBDIRS.inbox}/`)) return 'inbox';
-    if (rel.startsWith(`${SUBDIRS.task}/`)) return 'task';
+    if (rel.startsWith(`${SUBDIRS.handoff}/`) || rel.startsWith('oturumlar/')) return 'handoff';
+    if (rel.startsWith(`${SUBDIRS.decision}/`) || rel.startsWith('kararlar/')) return 'decision';
+    if (rel.startsWith(`${SUBDIRS.inbox}/`) || rel.startsWith('gelen-kutusu/')) return 'inbox';
+    if (rel.startsWith(`${SUBDIRS.task}/`) || rel.startsWith('gorevler/')) return 'task';
     return 'note';
   }
 
@@ -281,7 +282,7 @@ export class MemoryVault {
     return {
       vaultDir: this.vaultDir,
       agentsFileUri: toFileUri(path.join(this.vaultDir, 'AGENTS.md')),
-      agentsEnFileUri: toFileUri(path.join(this.vaultDir, 'AGENTS.en.md')),
+      agentsTrFileUri: toFileUri(path.join(this.vaultDir, 'AGENTS.tr.md')),
       counts,
       items: filtered.slice(0, limit).map(({ mtimeMs, ...rest }) => rest),
     };

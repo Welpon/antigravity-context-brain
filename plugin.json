@@ -1,0 +1,12 @@
+{
+  "name": "context-window",
+  "displayName": "Context Window",
+  "version": "1.0.0",
+  "description": "Canlı context window ve token kullanım izleyici + tekrar kullanılabilir bağlam paketleri (context packs) yöneticisi. Konuşma doluluk oranını, cache verimliliğini ve en ağır adımları yan panelden izleyin.",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Mevcut konuşmanın context window kullanımını ve en ağır adımlarını göster",
+    "Context Window panelini yan panelde aç",
+    "Bu proje için yeni bir bağlam paketi (context pack) oluştur"
+  ]
+}

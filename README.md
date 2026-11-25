@@ -20,20 +20,23 @@ A **Live Context Window Monitor** and **Portable Markdown Memory Vault** (MCP Ap
 ### 2. Memory
 All notes are stored as plain `.md` files in `~/Antigravity-Brain` (automatically created on first run; compatible with Claude Code, Codex, Cursor, Obsidian, and Git):
 - **💾 Save Handoff (`sessions/`):** Save session outcome, open items, and next step to pick up seamlessly in a new conversation.
-- **✅ Add Task (`tasks/`):** Cross-session to-do tracking with one-click completion toggle.
+- **✅ Add Task (`tasks/`):** 5-stage task tracking (`INBOX` · `ACTIVE` · `WAITING` · `DONE` · `CANCELLED`) with project/chat filter, optional descriptions, and inline editing.
 - **🧭 Decision (`decisions/`):** Record decisions and rationale so you can trace *why* later.
 - **⚡ Capture (`inbox/`):** Quick-capture videos, articles, files, or notes into your inbox.
 - **📦 Add Pack:** Bundle multiple local project files + reusable rules and attach their live contents to chat in one click (`📎 Attach Context` / `↗ Send`).
 - **🔍 Smart Search & Open File:** Strips English/Turkish question filler words, ranks matches by relevance, and opens `.md` files directly in Antigravity's side pane.
 
-### 3. Local Web App (Kanban Board & Cockpit)
+### 3. Activity Log (`Log` Tab)
+- Persistent, date-grouped (`Today / Yesterday / Date`) activity history stored in `~/Antigravity-Brain/.activity-log.jsonl`.
+- Tracks every creation, edit, status change, and deletion with exact time, relative time, source badge (`Web` / `Antigravity` / `AI Agent`), category filters, and expandable **before → after** diffs.
+
+### 4. Local Web App (Kanban Board & Overview)
 Launch a full-screen local web dashboard (`127.0.0.1`, auto-closes after 30 min idle) with one click from the **`🌐 Web`** button inside Context Brain, or from your terminal even when Antigravity is closed:
 ```bash
 npm run web
 ```
-- **5-Column Kanban Board:** `INBOX` · `ACTIVE` · `WAITING` · `DONE` · `CANCELLED` (`GELEN` · `AKTİF` · `BEKLİYOR` · `BİTTİ` · `İPTAL`) with drag-and-drop and dropdown status switching.
-- **Project / Conversation Filter:** Filter and create tasks per project or Antigravity conversation.
-- **Cockpit, Memory & Smart Search:** View live token usage, browse Markdown notes, and search across your entire vault from the browser.
+- **5-Column Kanban Board:** `INBOX` · `ACTIVE` · `WAITING` · `DONE` · `CANCELLED` (`GELEN` · `AKTİF` · `BEKLİYOR` · `BİTTİ` · `İPTAL`) with drag-and-drop, inline edit modal, and project/conversation selector.
+- **Overview, Notes & Vault + Smart Search, and Activity Log:** Full parity with the Antigravity panel in a wide browser layout.
 
 ---
 

@@ -92,94 +92,92 @@ function parseFrontmatter(raw) {
   return { meta, body: match[2].trim() };
 }
 
-const AGENTS_TR_CONTENT = `# Antigravity Brain — Hafıza Sekmesi Rehberi
+const AGENTS_TR_CONTENT = `# Context Brain — Kullanım Rehberi
 
-Bu klasör (\`~/Antigravity-Brain\`), tüm notlarını, kararlarını, görevlerini ve kaynaklarını düz Markdown (\`.md\`) dosyaları olarak saklayan **taşınabilir hafıza kasandır**. Antigravity dışında **Claude Code, Codex, Cursor, Obsidian** veya herhangi bir metin editörüyle de doğrudan açıp kullanabilirsin.
+Bu klasör (\`~/Antigravity-Brain\`), tüm oturum notlarını, görevlerini, kararlarını, yakalanan kaynaklarını ve aktivite geçmişini düz Markdown (\`.md\`) dosyaları olarak saklayan **taşınabilir hafıza kasandır**. Antigravity dışında **Claude Code, Codex, Cursor, Obsidian** veya herhangi bir metin editörüyle de doğrudan açıp kullanabilirsin.
 
 ---
 
-## Hafıza Sekmesindeki Tüm İşlevler
+## 3 Ana Sekme (Antigravity Paneli & Web)
 
-### 1. 💾 Oturum Kaydet (\`sessions/\`)
-- **Ne işe yarar?** Uzun bir çalışmayı bitirirken veya yeni bir sohbet açmadan önce **kaldığın yerden devam edebilmeni** sağlar.
-- **Neler kaydedilir?** Başlık, **Son İşin Sonucu**, **Açık Konular** ve **Sonraki Adım**.
-- **Nasıl kullanılır?** Yeni bir sohbet açtığında oturum kartındaki **\`📎 Bağlama Ekle\`** veya **\`↗ Gönder\`** butonuna bas; asistan bıraktığın yerden anında devam eder.
+### 1. 📊 İzleyici (Monitor / Genel Bakış)
+- **Canlı Token & Önbellek Takibi:** Konuşmanın gerçek doluluk yüzdesini, önbellek (Cache) / önbelleksiz ayrımını ve kalan token alanını gösterir.
+- **Çift Çizgili Zaman Çizelgesi:** Yeşil çizgi toplam bağlam büyümesini, mavi çizgi/alan önbellekten okunan kısmı ve olası önbellek ıskalarını gösterir.
+- **En Büyük Sıçramalar:** Gerçek tur farklarını (\`+15.1B\`) gösterir; satıra tıklayınca o turda çalışan tüm araçları listeler.
+- **En Ağır Adımlar & Kategori Dağılımı:** En çok yer kaplayan 10 adımı sade cümlelerle ve Sistem / Araçlar / Kullanıcı / Model / Düşünme dağılımıyla sunar.
 
-### 2. ✅ Görev Ekle (\`tasks/\`)
-- **Ne işe yarar?** Sohbetler ve günler arasında unutmak istemediğin yapılacak işleri takip eder.
-- **Neler kaydedilir?** Görev başlığı, öncelik (\`Yüksek / Normal / Düşük\`) ve detay notları.
-- **Nasıl kullanılır?** İşini bitirdiğinde **\`☐ Tamamla\`** butonuna basarak **\`☑ Tamamlandı\`** durumuna geçirebilirsin.
+### 2. 🧠 Hafıza (Memory)
+- **💾 Oturum Kaydet (\`sessions/\`):** Son işin sonucu, açık konular ve sonraki adımı kaydedip yeni oturumda tek tıkla devam etmeni sağlar.
+- **✅ Görev Ekle (\`tasks/\`):** 5 durumlu (**\`GELEN · AKTİF · BEKLİYOR · BİTTİ · İPTAL\`**) görev takibi; proje/sohbet bazlı filtreleme, kısa açıklama ve satır içi düzenleme (\`✎\`) destekler.
+- **🧭 Karar Ekle (\`decisions/\`):** Alınan kararları ve gerekçelerini aranabilir şekilde saklar.
+- **⚡ Yakala (\`inbox/\`):** Video, makale, dosya veya notları tek seferde gelen kutusuna alır.
+- **📦 Paket Ekle:** Birden fazla yerel proje dosyasını ve kuralı gruplayıp tek tıkla sohbete yükler.
+- **🔍 Akıllı Arama & Kart İşlemleri:** Türkçe/İngilizce soru kalıplarını ayıklayarak arama yapar; **\`📂 Dosyayı Aç\`** dosyayı yan panelde açar, **\`📎 Bağlama Ekle\`** sonraki mesaja iliştirir, **\`↗ Gönder\`** doğrudan sohbete yollar.
 
-### 3. 🧭 Karar Ekle (\`decisions/\`)
-- **Ne işe yarar?** *"Neden bu aracı / dili / tasarımı seçmiştik?"* sorusunu haftalar sonra bile kaynağından bulabilmeni sağlar.
-- **Neler kaydedilir?** Karar başlığı, **Alınan Karar**, **Gerekçe** ve aranabilir etiketler.
+### 3. 🕒 Log (Aktivite Geçmişi — \`.activity-log.jsonl\`)
+- Eklediğin, düzenlediğin, durumunu değiştirdiğin ve sildiğin her işlemi **gün bazlı (\`Bugün / Dün / Tarih\`)**, **saat + kaç dakika önce** ve **kaynak etiketi (\`Web / Antigravity / AI Ajan\`)** ile kaydeder.
+- Herhangi bir log satırına tıkladığında değişen alanların **öncesi → sonrası** farkını (başlık, durum, açıklama, proje, dosya yolu) ayrıntılı olarak görebilirsin.
 
-### 4. ⚡ Yakala (\`inbox/\`)
-- **Ne işe yarar?** Karşına çıkan bir **video, makale, dosya veya fikri** kaybetmeden gelen kutuna almanı sağlar.
-- **İpucu:** Biriken kaynakları düzenlemek istediğinde sohbete ***"Yakalananları işle"*** yazabilirsin.
+---
 
-### 5. 📦 Paket Ekle (Çoklu Dosya & Kural Paketleri)
-- **Ne işe yarar?** Bilgisayarındaki **birden fazla mevcut proje dosyasını** ve sabit kurallarını tek şablonda gruplar; her kullandığında dosyaların güncel halini okuyup tek tıkla sohbete yükler.
-
-### 6. 🔍 Akıllı Arama & Kart İşlemleri
-- **Akıllı Arama:** *"Projede hangi dili seçmiştik neden?"* gibi doğal Türkçe/İngilizce sorulardan dolgu kelimelerini ayıklayıp en alakalı notu en üste getirir.
-- **\`📂 Dosyayı Aç\`:** İlgili \`.md\` dosyasını doğrudan Antigravity yan panelinde açar.
-- **\`📎 Bağlama Ekle\`:** Notu veya paketi bir sonraki mesajının arkasına gizli bağlam olarak iliştirir.
-- **\`↗ Gönder\`:** Notu veya paketi anında sohbete referans mesajı olarak gönderir.
+## 🌐 Yerel Web Arayüzü (Kanban Panosu)
+- Panelin sağ üstündeki **\`🌐 Web\`** butonuna tıklayarak (veya Antigravity kapalıyken terminalden \`npm run web\` çalıştırarak) tarayıcıda tam ekran **5 sütunlu sürükle-bırak Kanban panosunu**, Genel Bakış'ı, Notlar & Kasa + Arama'yı ve Aktivite Logu'nu açabilirsin.
+- Yalnızca kendi bilgisayarında (\`127.0.0.1\`) çalışır ve 30 dakika kullanılmazsa otomatik kapanır.
 
 ## Sohbetten Kullanabileceğin Komutlar
 - ***"Beni tanı"*** — Çalışma tarzını öğrenip hafızana kaydeder.
 - ***"Bu oturumu hafızaya kaydet"*** — Sonucu, açık konuları ve sonraki adımı \`sessions/\` altına yazar.
+- ***"Bunun için görev oluştur"*** — \`tasks/\` altına yeni görev ekler.
 - ***"Yakalananları işle"*** — \`inbox/\` kayıtlarını özetleyip düzenlemene yardım eder.
 - ***"Hafızamı kontrol et"*** — Eski notları ve açık görevleri onayınla gözden geçirir.
 
-## Yedekleme
-Bu klasörü doğrudan kopyalayabilir, Google Drive / OneDrive ile eşitleyebilir veya özel bir Git deposuna yedekleyebilirsin.
+## Dil & Yedekleme
+- Üst bardaki **\`EN / TR\`** seçimi kalıcı olarak kaydedilir; hem panelde hem web arayüzünde senkron çalışır.
+- \`~/Antigravity-Brain\` klasörünü doğrudan kopyalayabilir, Google Drive / OneDrive ile eşitleyebilir veya özel bir Git deposuna yedekleyebilirsin.
 `;
 
-const AGENTS_EN_CONTENT = `# Antigravity Brain — Memory Tab Guide
+const AGENTS_EN_CONTENT = `# Context Brain — User Guide
 
-This folder (\`~/Antigravity-Brain\`) is your **portable memory vault**, storing all notes, decisions, tasks, and captured resources as plain Markdown (\`.md\`) files. You can open and share it directly with **Claude Code, Codex, Cursor, Obsidian**, or any text editor.
+This folder (\`~/Antigravity-Brain\`) is your **portable memory vault**, storing all session handoffs, tasks, decisions, captured resources, and activity logs as plain Markdown (\`.md\`) and JSONL files. You can open and share it directly with **Claude Code, Codex, Cursor, Obsidian**, or any text editor.
 
 ---
 
-## Memory Tab Features
+## 3 Core Tabs (Antigravity Panel & Web)
 
-### 1. 💾 Save Handoff (\`sessions/\`)
-- **What it does:** Lets you **pick up right where you left off** in a brand-new conversation.
-- **What it saves:** Title, **Outcome / Summary**, **Open Items**, and **Next Step**.
-- **How to use:** In a new chat, click **\`📎 Attach Context\`** or **\`↗ Send\`** on the handoff card so the assistant immediately continues your work.
+### 1. 📊 Monitor / Overview
+- **Live Token & Cache Telemetry:** Displays real context utilization, Cache vs. Uncached split, cache hit rate, and remaining free tokens.
+- **Dual-Line Timeline:** Green line for total context growth, blue line/area for cached tokens so cache misses are immediately visible.
+- **Top Spikes (Interactive):** Real turn-to-turn context deltas (\`+15.1K\`); click any row to inspect all tools executed in that turn.
+- **Heaviest Steps & Category Breakdown:** Top 10 heaviest steps with plain-language summaries plus System / Tools / User / Model / Thinking breakdown.
 
-### 2. ✅ Add Task (\`tasks/\`)
-- **What it does:** Tracks to-dos across sessions and days.
-- **What it saves:** Task title, priority (\`High / Normal / Low\`), and notes.
-- **How to use:** Click **\`☐ Mark Done\`** on a task card to toggle it to **\`☑ Done\`** (updates the Markdown checkbox to \`[x]\`).
+### 2. 🧠 Memory
+- **💾 Save Handoff (\`sessions/\`):** Save outcome, open items, and next step to pick up seamlessly in a new conversation.
+- **✅ Add Task (\`tasks/\`):** 5-stage task tracking (**\`INBOX · ACTIVE · WAITING · DONE · CANCELLED\`**) with project/chat filtering, optional descriptions, and inline editing (\`✎\`).
+- **🧭 Decision (\`decisions/\`):** Record decisions and rationale so you can trace *why* later.
+- **⚡ Capture (\`inbox/\`):** Quick-capture videos, articles, files, or notes into your inbox.
+- **📦 Add Pack:** Bundle multiple local project files + reusable rules and attach live contents to chat in one click.
+- **🔍 Smart Search & Card Actions:** Strips English/Turkish question filler words; **\`📂 Open File\`** opens the \`.md\` file in Antigravity's side pane, **\`📎 Attach Context\`** attaches it to your next message, and **\`↗ Send\`** sends it directly to chat.
 
-### 3. 🧭 Decision (\`decisions/\`)
-- **What it does:** Records *why* you chose a specific tool, language, or design so you can find the exact source weeks later.
-- **What it saves:** Decision title, **Decision**, **Rationale**, and searchable tags.
+### 3. 🕒 Log (Activity History — \`.activity-log.jsonl\`)
+- Automatically records every creation, edit, status move, and deletion grouped by day (**\`Today / Yesterday / Date\`**) with exact time, relative time, and source badge (**\`Web / Antigravity / AI Agent\`**).
+- Click any log row to expand exact **before → after** field diffs (title, status, description, project, file path).
 
-### 4. ⚡ Capture (\`inbox/\`)
-- **What it does:** Quickly saves a **video, article, file, or idea** into your inbox without losing focus.
-- **Tip:** Say ***"Process my inbox"*** in chat to turn captured items into structured decisions or tasks.
+---
 
-### 5. 📦 Add Pack (Multi-File & Rule Bundles)
-- **What it does:** Groups **multiple local project files** and reusable rules into one pack; reads live file contents and calculates token cost before attaching in one click.
-
-### 6. 🔍 Smart Search & Card Actions
-- **Smart Search:** Strips natural question filler words (in both English and Turkish) and ranks matching notes by relevance.
-- **\`📂 Open File\`:** Opens the exact \`.md\` file directly in Antigravity's side pane.
-- **\`📎 Attach Context\`:** Attaches the note or pack as pending context to your next message.
-- **\`↗ Send\`:** Sends the note or pack directly into the current chat.
+## 🌐 Local Web UI (Kanban Board)
+- Click **\`🌐 Web\`** in the top-right header (or run \`npm run web\` even when Antigravity is closed) to launch a full-screen **5-column drag-and-drop Kanban board**, Overview, Notes & Vault + Smart Search, and Activity Log in your browser.
+- Runs strictly on \`127.0.0.1\` and auto-closes after 30 minutes of inactivity.
 
 ## Useful Chat Prompts
-- ***"Get to know me"*** — Asks a few short questions and saves your preferences to memory.
+- ***"Get to know me"*** — Learns your preferences and saves them to memory.
 - ***"Save this session to memory"*** — Summarizes outcome, open items, and next step into \`sessions/\`.
+- ***"Create a task for this"*** — Adds a task under \`tasks/\`.
 - ***"Process my inbox"*** — Reviews items in \`inbox/\` and helps organize them.
 - ***"Audit my memory"*** — Reviews open tasks and older notes (never modifies without your approval).
 
-## Backup
-Copy this folder anywhere, sync it via Google Drive / OneDrive, or back it up to a private Git repository.
+## Language & Backup
+- Your **\`EN / TR\`** language choice persists across both Antigravity and the Web UI.
+- Copy \`~/Antigravity-Brain\` anywhere, sync via Google Drive / OneDrive, or back it up to a private Git repository.
 `;
 
 export class MemoryVault {

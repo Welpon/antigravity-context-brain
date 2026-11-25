@@ -451,6 +451,9 @@
         noItems: 'No items found.',
         stoppedTitle: 'Context Brain Web stopped',
         stoppedSub: 'You can close this tab or restart with npm run web.',
+        deleteLbl: 'Delete',
+        generalTag: '#general',
+        kinds: { handoff: 'Session', decision: 'Decision', task: 'Task', inbox: 'Inbox', note: 'Note' },
         toastSaved: 'Saved!',
         toastSynced: 'Synced.',
         toastDeleted: 'Deleted.',
@@ -537,6 +540,9 @@
         noItems: 'Kayıt bulunamadı.',
         stoppedTitle: 'Context Brain Web kapatıldı',
         stoppedSub: 'Bu sekmeyi kapatabilir veya npm run web ile yeniden başlatabilirsin.',
+        deleteLbl: 'Sil',
+        generalTag: '#genel',
+        kinds: { handoff: 'Oturum', decision: 'Karar', task: 'Görev', inbox: 'Yakala', note: 'Not' },
         toastSaved: 'Kaydedildi!',
         toastSynced: 'Eşitlendi.',
         toastDeleted: 'Silindi.',
@@ -875,13 +881,13 @@
                 <div class="task-title ${colId === 'done' || colId === 'cancelled' ? 'done' : ''}" data-open-note="${esc(item.path)}">${esc(item.title)}</div>
                 ${item.notes ? `<div style="font-size:11.5px;color:var(--fg-2);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(item.notes)}</div>` : ''}
                 <div class="task-meta">
-                  <span class="proj-chip" title="${esc(item.project || '-')}">${item.project ? `#${esc(item.project)}` : '#general'}</span>
+                  <span class="proj-chip" title="${esc(item.project || '-')}">${item.project ? `#${esc(item.project)}` : esc(t('generalTag'))}</span>
                   <span class="${prioClass}">${esc(prioText)}</span>
                 </div>
                 <div class="card-row">
                   <select class="status-select" data-status-path="${esc(item.path)}">${statusOpts}</select>
                   <button class="del-icon" title="${esc(t('editTaskTitle'))}" data-edit-task="${esc(item.path)}">✎</button>
-                  <button class="del-icon" title="Delete" data-del-path="${esc(item.path)}">🗑</button>
+                  <button class="del-icon" title="${esc(t('deleteLbl'))}" data-del-path="${esc(item.path)}">🗑</button>
                 </div>
               </div>
             `;
@@ -1090,7 +1096,7 @@
           (i) => `
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
-              <span class="badge badge-${esc(i.kind)}">${esc(i.kind)}</span>
+              <span class="badge badge-${esc(i.kind)}">${esc(t('kinds')[i.kind] || i.kind)}</span>
               <span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">${esc(fmtRel(i.updatedAt))} · ~${fmtCompact(i.tokens)}</span>
             </div>
             <div class="task-title" data-open-note="${esc(i.path)}">${esc(i.title)}</div>

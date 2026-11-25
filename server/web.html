@@ -287,6 +287,17 @@
     .heavy-head { font-size: 12px; font-weight: 600; color: var(--fg); }
     .heavy-desc { font-size: 11.5px; color: var(--fg-2); margin-top: 2px; }
     .heavy-tok { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--fg-2); flex-shrink: 0; }
+    .log-list { display: flex; flex-direction: column; gap: 8px; }
+    .log-row {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding: 10px 12px; border-radius: 8px; background: var(--card);
+      border: 1px solid var(--border);
+    }
+    .log-time {
+      text-align: right; font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+      flex-shrink: 0; white-space: nowrap;
+    }
+    .log-rel { color: var(--fg-2); font-weight: 600; margin-top: 2px; }
 
     /* Modal */
     .modal-backdrop {
@@ -331,10 +342,28 @@
       en: {
         catMonitor: 'MONITOR',
         catMemory: 'MEMORY',
+        catLog: 'LOG',
         navOverview: 'Overview',
         navTasks: 'Tasks',
         navMemory: 'Notes & Vault',
-        navSearch: 'Search',
+        navLog: 'Activity Log',
+        logTitle: 'Activity Log',
+        logSub: 'Full timestamped history of everything you created, edited, moved, or deleted.',
+        logClearBtn: 'Clear Log',
+        logFilterPh: 'Filter logs...',
+        logEmpty: 'No activity recorded yet.',
+        logActions: {
+          task_created: 'Task Created',
+          task_edited: 'Task Edited',
+          task_moved: 'Status Changed',
+          handoff_saved: 'Handoff Saved',
+          decision_saved: 'Decision Saved',
+          resource_captured: 'Captured',
+          note_deleted: 'Deleted',
+          pack_saved: 'Pack Saved',
+          pack_deleted: 'Pack Deleted',
+          web_opened: 'Web Opened',
+        },
         sync: 'Sync',
         stopServer: 'Stop Server',
         idleNote: 'Auto-closes after 30 min idle',
@@ -399,10 +428,28 @@
       tr: {
         catMonitor: 'İZLEYİCİ',
         catMemory: 'HAFIZA',
+        catLog: 'LOG',
         navOverview: 'Genel Bakış',
         navTasks: 'Görevler',
         navMemory: 'Notlar & Kasa',
-        navSearch: 'Arama',
+        navLog: 'Aktivite Logu',
+        logTitle: 'Aktivite Logu',
+        logSub: 'Oluşturduğun, düzenlediğin, taşıdığın ve sildiğin her işlemin tarih-saatli geçmişi.',
+        logClearBtn: 'Logları Temizle',
+        logFilterPh: 'Loglarda ara...',
+        logEmpty: 'Henüz kaydedilmiş bir aktivite yok.',
+        logActions: {
+          task_created: 'Görev Eklendi',
+          task_edited: 'Görev Düzenlendi',
+          task_moved: 'Durum Değişti',
+          handoff_saved: 'Oturum Kaydedildi',
+          decision_saved: 'Karar Kaydedildi',
+          resource_captured: 'Kaynak Yakalandı',
+          note_deleted: 'Silindi',
+          pack_saved: 'Paket Kaydedildi',
+          pack_deleted: 'Paket Silindi',
+          web_opened: 'Web Açıldı',
+        },
         sync: 'Eşitle',
         stopServer: 'Sunucuyu Kapat',
         idleNote: '30 dk kullanılmazsa kapanır',
@@ -619,6 +666,7 @@
       selectedConvId: '',
       searchQuery: '',
       searchResults: null,
+      logFilter: '',
       expandedSpikes: new Set(),
       dragTaskPath: null,
       stopped: false,
@@ -986,18 +1034,35 @@
       `;
     }
 
+    function fmtDateTime(iso) {
+      if (!iso) return '';
+      try {
+        const d = new Date(iso);
+        return d.toLocaleString(state.lang === 'tr' ? 'tr-TR' : 'en-GB', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
+      } catch {
+        return iso;
+      }
+    }
+
     function renderMemoryView() {
-      const items = state.data?.vault?.items || [];
+      const items = state.searchResults ?? (state.data?.vault?.items || []);
       const cards = items
         .map(
           (i) => `
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
               <span class="badge badge-${esc(i.kind)}">${esc(i.kind)}</span>
-              <span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">~${fmtCompact(i.tokens)}</span>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">${esc(fmtRel(i.updatedAt))} · ~${fmtCompact(i.tokens)}</span>
             </div>
             <div class="task-title" data-open-note="${esc(i.path)}">${esc(i.title)}</div>
-            <div style="font-size:12px;color:var(--fg-2);">${esc(i.preview || '')}</div>
+            <div style="font-size:12px;color:var(--fg-2);">${esc(i.snippet || i.preview || '')}</div>
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--fg-3);font-family:var(--mono);">
               <span>${esc(i.relativePath)}</span>
               <button class="del-icon" data-del-path="${esc(i.path)}">🗑</button>
@@ -1014,39 +1079,69 @@
             <div class="page-sub">${esc(t('memorySub'))}</div>
           </div>
         </div>
+        <form id="searchForm" class="toolbar">
+          <input id="searchInput" class="input" style="flex:1;" placeholder="${esc(t('searchPh'))}" value="${esc(state.searchQuery)}" />
+          <button type="submit" class="btn btn-primary">${esc(t('searchBtn'))}</button>
+          ${state.searchQuery ? `<button type="button" id="btnClearSearch" class="btn">✕</button>` : ''}
+        </form>
         <div class="note-grid">${cards || `<div class="card">${esc(t('noItems'))}</div>`}</div>
       `;
     }
 
-    function renderSearchView() {
-      const items = state.searchResults ?? (state.data?.vault?.items || []);
-      const cards = items
-        .map(
-          (i) => `
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="badge badge-${esc(i.kind)}">${esc(i.kind)}</span>
-              <span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">${esc(i.relativePath)}</span>
+    function renderLogView() {
+      const allLogs = state.data?.logs || [];
+      const q = state.logFilter.trim().toLowerCase();
+      const filtered = q
+        ? allLogs.filter((l) =>
+            `${l.title} ${l.detail} ${l.project} ${l.action} ${l.fromStatus} ${l.toStatus}`
+              .toLowerCase()
+              .includes(q)
+          )
+        : allLogs;
+
+      const rows = filtered
+        .map((l) => {
+          const actionText = t('logActions')[l.action] || l.action;
+          const badgeKind = l.action.includes('delete') ? 'inbox' : l.entity || 'decision';
+          const statusMove =
+            l.fromStatus && l.toStatus && l.fromStatus !== l.toStatus
+              ? `${t('cols')[l.fromStatus] || l.fromStatus} → ${t('cols')[l.toStatus] || l.toStatus}`
+              : l.toStatus
+                ? `${t('cols')[l.toStatus] || l.toStatus}`
+                : '';
+
+          return `
+            <div class="log-row">
+              <div style="min-width:0;flex:1;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span class="badge badge-${esc(badgeKind)}">${esc(actionText)}</span>
+                  <strong style="font-size:13px;">${esc(l.title || '-')}</strong>
+                  ${statusMove ? `<span class="spike-pill">${esc(statusMove)}</span>` : ''}
+                  ${l.project ? `<span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">#${esc(l.project)}</span>` : ''}
+                </div>
+                ${l.detail ? `<div style="font-size:12px;color:var(--fg-2);margin-top:4px;">${esc(l.detail)}</div>` : ''}
+              </div>
+              <div class="log-time">
+                <div>${esc(fmtDateTime(l.timestamp))}</div>
+                <div class="log-rel">${esc(fmtRel(l.timestamp))}</div>
+              </div>
             </div>
-            <div class="task-title" data-open-note="${esc(i.path)}">${esc(i.title)}</div>
-            <div style="font-size:12px;color:var(--fg-2);">${esc(i.snippet || i.preview || '')}</div>
-          </div>
-        `
-        )
+          `;
+        })
         .join('');
 
       return `
         <div class="page-head">
           <div>
-            <h1 class="page-title">${esc(t('searchTitle'))}</h1>
-            <div class="page-sub">${esc(t('searchSub'))}</div>
+            <h1 class="page-title">${esc(t('logTitle'))}</h1>
+            <div class="page-sub">${esc(t('logSub'))}</div>
+          </div>
+          <div class="toolbar">
+            <input id="logFilterInput" class="input" placeholder="${esc(t('logFilterPh'))}" value="${esc(state.logFilter)}" />
+            <button id="btnClearLogs" class="btn btn-danger">${esc(t('logClearBtn'))}</button>
           </div>
         </div>
-        <form id="searchForm" class="toolbar">
-          <input id="searchInput" class="input" style="flex:1;" placeholder="${esc(t('searchPh'))}" value="${esc(state.searchQuery)}" />
-          <button type="submit" class="btn btn-primary">${esc(t('searchBtn'))}</button>
-        </form>
-        <div class="note-grid">${cards || `<div class="card">${esc(t('noItems'))}</div>`}</div>
+        <div class="log-list">${rows || `<div class="card">${esc(t('logEmpty'))}</div>`}</div>
       `;
     }
 
@@ -1058,6 +1153,7 @@
       }
 
       const counts = state.data?.vault?.counts || { all: 0, task: 0 };
+      const logCount = (state.data?.logs || []).length;
 
       root.innerHTML = `
         <div class="layout">
@@ -1082,8 +1178,9 @@
                 <button class="nav-btn ${state.view === 'memory' ? 'active' : ''}" data-nav="memory">
                   <span>🧠 ${esc(t('navMemory'))}</span><span class="nav-count">${counts.all || 0}</span>
                 </button>
-                <button class="nav-btn ${state.view === 'search' ? 'active' : ''}" data-nav="search">
-                  <span>🔍 ${esc(t('navSearch'))}</span>
+                <div class="nav-group">${esc(t('catLog'))}</div>
+                <button class="nav-btn ${state.view === 'logs' ? 'active' : ''}" data-nav="logs">
+                  <span>🕒 ${esc(t('navLog'))}</span><span class="nav-count">${logCount}</span>
                 </button>
               </nav>
             </div>
@@ -1102,7 +1199,7 @@
                   ? renderCockpitView()
                   : state.view === 'memory'
                     ? renderMemoryView()
-                    : renderSearchView()
+                    : renderLogView()
             }
           </main>
         </div>
@@ -1241,6 +1338,25 @@
         const res = await api(`/api/search?q=${encodeURIComponent(state.searchQuery)}`);
         state.searchResults = res.items || [];
         render();
+      });
+
+      document.getElementById('btnClearSearch')?.addEventListener('click', () => {
+        state.searchQuery = '';
+        state.searchResults = null;
+        render();
+      });
+
+      document.getElementById('logFilterInput')?.addEventListener('input', (e) => {
+        state.logFilter = e.target.value;
+        render();
+        const inp = document.getElementById('logFilterInput');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+      });
+
+      document.getElementById('btnClearLogs')?.addEventListener('click', async () => {
+        await api('/api/logs/clear', { method: 'POST' });
+        showToast(t('toastDeleted'));
+        await loadState(true);
       });
     }
 

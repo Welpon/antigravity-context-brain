@@ -138,6 +138,7 @@ export function startWebServer({
         const analysis = analyzeConversation(convId, customLimit);
         const conversations = listConversations(30);
         const vaultData = vault.list('all', 200);
+        const logs = vault.listLogs(200);
         const packs = packStore.list();
         const projects = buildProjectsList(vaultData.items, conversations);
         sendJson(res, 200, {
@@ -145,10 +146,22 @@ export function startWebServer({
           analysis,
           conversations,
           vault: vaultData,
+          logs,
           packs,
           projects,
           idleMinutes,
         });
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/api/logs') {
+        sendJson(res, 200, { logs: vault.listLogs(200) });
+        return;
+      }
+
+      if (req.method === 'POST' && pathname === '/api/logs/clear') {
+        vault.clearLogs();
+        sendJson(res, 200, { logs: [] });
         return;
       }
 

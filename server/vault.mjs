@@ -185,7 +185,54 @@ Copy this folder anywhere, sync it via Google Drive / OneDrive, or back it up to
 export class MemoryVault {
   constructor(vaultDir = process.env.ANTIGRAVITY_VAULT_DIR || DEFAULT_VAULT_DIR) {
     this.vaultDir = vaultDir;
+    this.logPath = path.join(this.vaultDir, '.activity-log.jsonl');
     this.ensureStructure();
+  }
+
+  appendLog({ action, entity = '', title = '', detail = '', project = '', fromStatus = '', toStatus = '' }) {
+    try {
+      this.ensureStructure();
+      const entry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        timestamp: new Date().toISOString(),
+        action: String(action || 'event'),
+        entity: String(entity || ''),
+        title: String(title || ''),
+        detail: String(detail || ''),
+        project: String(project || ''),
+        fromStatus: String(fromStatus || ''),
+        toStatus: String(toStatus || ''),
+      };
+      fs.appendFileSync(this.logPath, `${JSON.stringify(entry)}\n`, 'utf8');
+      return entry;
+    } catch {
+      return null;
+    }
+  }
+
+  listLogs(limit = 150) {
+    this.ensureStructure();
+    if (!fs.existsSync(this.logPath)) return [];
+    const raw = fs.readFileSync(this.logPath, 'utf8');
+    const items = [];
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        items.push(JSON.parse(trimmed));
+      } catch {
+        // skip malformed line
+      }
+    }
+    items.reverse();
+    return items.slice(0, limit);
+  }
+
+  clearLogs() {
+    if (fs.existsSync(this.logPath)) {
+      fs.writeFileSync(this.logPath, '', 'utf8');
+    }
+    return true;
   }
 
   ensureStructure() {
@@ -336,7 +383,9 @@ export class MemoryVault {
     ].join('\n');
 
     fs.writeFileSync(filePath, content, 'utf8');
-    return this._readItem(filePath);
+    const item = this._readItem(filePath);
+    this.appendLog({ action: 'handoff_saved', entity: 'handoff', title: item.title, detail: nextStep.trim() || summary.trim() });
+    return item;
   }
 
   saveDecision({ title, decision = '', rationale = '', tags = [], lang = 'en' }) {
@@ -367,7 +416,9 @@ export class MemoryVault {
     ].join('\n');
 
     fs.writeFileSync(filePath, content, 'utf8');
-    return this._readItem(filePath);
+    const item = this._readItem(filePath);
+    this.appendLog({ action: 'decision_saved', entity: 'decision', title: item.title, detail: decision.trim() });
+    return item;
   }
 
   captureResource({ title, sourceType = 'note', urlOrPath = '', notes = '', tags = [], lang = 'en' }) {
@@ -398,7 +449,9 @@ export class MemoryVault {
     ].join('\n');
 
     fs.writeFileSync(filePath, content, 'utf8');
-    return this._readItem(filePath);
+    const item = this._readItem(filePath);
+    this.appendLog({ action: 'resource_captured', entity: 'inbox', title: item.title, detail: urlOrPath.trim() || notes.trim() });
+    return item;
   }
 
   saveTask({ title, notes = '', priority = 'normal', status = 'inbox', project = '', tags = [], lang = 'en' }) {
@@ -431,7 +484,9 @@ export class MemoryVault {
     ].join('\n');
 
     fs.writeFileSync(filePath, content, 'utf8');
-    return this._readItem(filePath);
+    const item = this._readItem(filePath);
+    this.appendLog({ action: 'task_created', entity: 'task', title: item.title, detail: notes.trim(), project: cleanProject, toStatus: cleanStatus });
+    return item;
   }
 
   updateTask({ path: filePath, title, notes, project, priority, status, lang = 'en' }) {
@@ -473,7 +528,17 @@ export class MemoryVault {
     ].join('\n');
 
     fs.writeFileSync(resolved, content, 'utf8');
-    return this._readItem(resolved);
+    const item = this._readItem(resolved);
+    this.appendLog({
+      action: 'task_edited',
+      entity: 'task',
+      title: item.title,
+      detail: cleanNotes,
+      project: cleanProject,
+      fromStatus: existingItem.status,
+      toStatus: cleanStatus,
+    });
+    return item;
   }
 
   updateTaskStatus(filePath, nextStatusRaw) {
@@ -482,6 +547,7 @@ export class MemoryVault {
     if (!resolved.startsWith(vaultResolved) || !fs.existsSync(resolved)) {
       throw new Error('Task file not found.');
     }
+    const prevItem = this._readItem(resolved);
     const nextStatus = normalizeTaskStatus(nextStatusRaw);
     let raw = fs.readFileSync(resolved, 'utf8');
 
@@ -496,7 +562,16 @@ export class MemoryVault {
         : raw.replace(/- \[x\] /i, '- [ ] ');
 
     fs.writeFileSync(resolved, raw, 'utf8');
-    return this._readItem(resolved);
+    const item = this._readItem(resolved);
+    this.appendLog({
+      action: 'task_moved',
+      entity: 'task',
+      title: item.title,
+      project: item.project,
+      fromStatus: prevItem.status,
+      toStatus: nextStatus,
+    });
+    return item;
   }
 
   toggleTask(filePath) {
@@ -594,7 +669,16 @@ export class MemoryVault {
       throw new Error('Only files inside the memory vault can be deleted.');
     }
     if (!fs.existsSync(resolved)) return false;
+    let info = null;
+    try {
+      info = this._readItem(resolved);
+    } catch {
+      // ignore
+    }
     fs.unlinkSync(resolved);
+    if (info) {
+      this.appendLog({ action: 'note_deleted', entity: info.kind, title: info.title, project: info.project });
+    }
     return true;
   }
 }

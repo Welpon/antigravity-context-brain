@@ -10,6 +10,7 @@ const I18N = {
     tabMonitor: 'İzleyici',
     tabPacks: 'Paketler',
     tabMemory: 'Hafıza',
+    tabLog: 'Log',
     live: 'Canlı',
     liveTitle: '2 dk otomatik yenile',
     refreshTitle: 'Yenile',
@@ -172,11 +173,28 @@ const I18N = {
     toastFileOpenFail: 'Bu görünümde dosya yan panelde açılamadı.',
     toastNoteAttached: (n) => `"${n}" sonraki mesaja eklendi.`,
     toastNoteSent: (n) => `"${n}" sohbete gönderildi.`,
+    logFilterPh: 'Loglarda ara...',
+    logClearBtn: 'Temizle',
+    logEmpty: 'Henüz kaydedilmiş bir aktivite yok.',
+    toastLogsCleared: 'Log geçmişi temizlendi.',
+    logActions: {
+      task_created: 'Görev Eklendi',
+      task_edited: 'Görev Düzenlendi',
+      task_moved: 'Durum Değişti',
+      handoff_saved: 'Oturum Kaydedildi',
+      decision_saved: 'Karar Kaydedildi',
+      resource_captured: 'Kaynak Yakalandı',
+      note_deleted: 'Silindi',
+      pack_saved: 'Paket Kaydedildi',
+      pack_deleted: 'Paket Silindi',
+      web_opened: 'Web Açıldı',
+    },
   },
   en: {
     tabMonitor: 'Monitor',
     tabPacks: 'Packs',
     tabMemory: 'Memory',
+    tabLog: 'Log',
     live: 'Live',
     liveTitle: 'Auto-refresh every 2 min',
     refreshTitle: 'Refresh',
@@ -339,6 +357,22 @@ const I18N = {
     toastFileOpenFail: 'Cannot open file in side pane on this view.',
     toastNoteAttached: (n) => `Attached "${n}" to next message.`,
     toastNoteSent: (n) => `Sent "${n}" to chat.`,
+    logFilterPh: 'Filter logs...',
+    logClearBtn: 'Clear',
+    logEmpty: 'No activity recorded yet.',
+    toastLogsCleared: 'Activity log cleared.',
+    logActions: {
+      task_created: 'Task Created',
+      task_edited: 'Task Edited',
+      task_moved: 'Status Changed',
+      handoff_saved: 'Handoff Saved',
+      decision_saved: 'Decision Saved',
+      resource_captured: 'Captured',
+      note_deleted: 'Deleted',
+      pack_saved: 'Pack Saved',
+      pack_deleted: 'Pack Deleted',
+      web_opened: 'Web Opened',
+    },
   },
 };
 
@@ -348,6 +382,8 @@ const state = {
   analysis: null,
   packs: [],
   vault: null,
+  logs: [],
+  logFilter: '',
   vaultFilter: 'all',
   taskProjectFilter: '__all__',
   vaultSearchQuery: '',
@@ -578,6 +614,22 @@ function fmtCompact(n) {
   return String(Math.round(num));
 }
 
+function fmtDateTime(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleString(state.lang === 'tr' ? 'tr-TR' : 'en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
+}
+
 function fmtRelativeTime(iso) {
   if (!iso) return '';
   const diffSec = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
@@ -619,7 +671,7 @@ app.ontoolinput = ({ arguments: args }) => {
   if (args?.tab === 'packs') {
     state.activeTab = 'memory';
     state.vaultFilter = 'pack';
-  } else if (args?.tab === 'monitor' || args?.tab === 'memory') {
+  } else if (args?.tab === 'monitor' || args?.tab === 'memory' || args?.tab === 'logs') {
     state.activeTab = args.tab;
   }
   if (args?.conversation_id) state.selectedConvId = args.conversation_id;
@@ -650,6 +702,9 @@ app.ontoolresult = (result) => {
     }
     if (sc.vault) {
       state.vault = sc.vault;
+    }
+    if (Array.isArray(sc.logs)) {
+      state.logs = sc.logs;
     }
     if (sc.prefs?.lang === 'tr' || sc.prefs?.lang === 'en') {
       state.lang = sc.prefs.lang;
@@ -714,6 +769,29 @@ async function refreshVault(kind = state.vaultFilter) {
       state.vaultSearchResults = null;
       render();
     }
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function refreshLogs() {
+  try {
+    const data = await callTool('list_activity_log', { limit: 150 });
+    if (Array.isArray(data?.logs)) {
+      state.logs = data.logs;
+      render();
+    }
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function handleClearLogs() {
+  try {
+    await callTool('clear_activity_log', {});
+    state.logs = [];
+    showToast(t('toastLogsCleared'));
+    render();
   } catch (err) {
     showToast(err.message);
   }
@@ -1915,6 +1993,63 @@ function renderMemory() {
   `;
 }
 
+function renderLogs() {
+  const statusMap = {
+    inbox: t('colInbox'),
+    active: t('colActive'),
+    waiting: t('colWaiting'),
+    done: t('colDone'),
+    cancelled: t('colCancelled'),
+  };
+  const q = state.logFilter.trim().toLowerCase();
+  const filtered = q
+    ? state.logs.filter((l) =>
+        `${l.title} ${l.detail} ${l.project} ${l.action} ${l.fromStatus} ${l.toStatus}`
+          .toLowerCase()
+          .includes(q)
+      )
+    : state.logs;
+
+  const actionsMap = t('logActions');
+  const rows = filtered
+    .map((l) => {
+      const actionLabel = (actionsMap && actionsMap[l.action]) || l.action;
+      const badgeKind = l.action.includes('delete') ? 'inbox' : l.entity || 'decision';
+      const moveText =
+        l.fromStatus && l.toStatus && l.fromStatus !== l.toStatus
+          ? `${statusMap[l.fromStatus] || l.fromStatus} → ${statusMap[l.toStatus] || l.toStatus}`
+          : l.toStatus
+            ? `${statusMap[l.toStatus] || l.toStatus}`
+            : '';
+
+      return `
+        <div class="log-card">
+          <div class="log-top">
+            <span class="kind-badge kind-${esc(badgeKind)}">${esc(actionLabel)}</span>
+            <span class="log-ts">${esc(fmtDateTime(l.timestamp))} · ${esc(fmtRelativeTime(l.timestamp))}</span>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--fg-1);">
+            ${esc(l.title || '-')}
+            ${moveText ? `<span class="tag" style="margin-left:4px;">${esc(moveText)}</span>` : ''}
+            ${l.project ? `<span class="tag" style="margin-left:4px;">#${esc(l.project)}</span>` : ''}
+          </div>
+          ${l.detail ? `<div class="log-detail">${esc(l.detail)}</div>` : ''}
+        </div>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="search-row">
+      <input id="logFilterInput" class="input search-input" placeholder="${esc(t('logFilterPh'))}" value="${esc(state.logFilter)}" />
+      <button id="btnClearLogs" class="btn btn-danger btn-sm">${esc(t('logClearBtn'))}</button>
+    </div>
+    <div class="pack-list">
+      ${rows || `<div class="card"><div class="empty">${esc(t('logEmpty'))}</div></div>`}
+    </div>
+  `;
+}
+
 function render() {
   const root = document.getElementById('root');
   if (!root) return;
@@ -1927,6 +2062,7 @@ function render() {
         <div class="tabs">
           <button id="tabMonitor" class="tab-btn ${state.activeTab === 'monitor' ? 'active' : ''}">${esc(t('tabMonitor'))}</button>
           <button id="tabMemory" class="tab-btn ${state.activeTab === 'memory' ? 'active' : ''}">${esc(t('tabMemory'))} (${memoryCount})</button>
+          <button id="tabLog" class="tab-btn ${state.activeTab === 'logs' ? 'active' : ''}">${esc(t('tabLog'))} (${state.logs.length})</button>
         </div>
         <div class="header-controls">
           <button id="btnOpenWeb" class="lang-btn" title="${esc(t('webBtnTitle'))}">🌐 Web</button>
@@ -1939,12 +2075,14 @@ function render() {
                 </button>
                 <button id="btnRefresh" class="icon-btn" title="${esc(t('refreshTitle'))}" ${state.loading ? 'disabled' : ''}>↻</button>
               `
-              : `<button id="btnRefreshVault" class="icon-btn" title="${esc(t('refreshTitle'))}">↻</button>`
+              : state.activeTab === 'memory'
+                ? `<button id="btnRefreshVault" class="icon-btn" title="${esc(t('refreshTitle'))}">↻</button>`
+                : `<button id="btnRefreshLogs" class="icon-btn" title="${esc(t('refreshTitle'))}">↻</button>`
           }
         </div>
       </div>
 
-      ${state.activeTab === 'monitor' ? renderMonitor() : renderMemory()}
+      ${state.activeTab === 'monitor' ? renderMonitor() : state.activeTab === 'memory' ? renderMemory() : renderLogs()}
     </div>
     <div id="toast" class="toast hidden"></div>
   `;
@@ -1964,6 +2102,21 @@ function bindEvents() {
     state.activeTab = 'memory';
     render();
     Promise.allSettled([refreshVault(state.vaultFilter === 'pack' ? 'all' : state.vaultFilter), refreshPacks()]);
+  });
+
+  document.getElementById('tabLog')?.addEventListener('click', () => {
+    state.activeTab = 'logs';
+    render();
+    refreshLogs();
+  });
+
+  document.getElementById('btnRefreshLogs')?.addEventListener('click', () => refreshLogs());
+  document.getElementById('btnClearLogs')?.addEventListener('click', () => handleClearLogs());
+  document.getElementById('logFilterInput')?.addEventListener('input', (e) => {
+    state.logFilter = e.target.value;
+    render();
+    const inp = document.getElementById('logFilterInput');
+    if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
   });
 
   document.getElementById('btnRefreshVault')?.addEventListener('click', () => {
@@ -2149,7 +2302,7 @@ async function init() {
   }
 
   if (!state.analysis) {
-    await Promise.allSettled([refreshMonitor(true), refreshPacks(), refreshVault('all')]);
+    await Promise.allSettled([refreshMonitor(true), refreshPacks(), refreshVault('all'), refreshLogs()]);
   }
 }
 

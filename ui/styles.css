@@ -1077,6 +1077,36 @@ body {
   color: var(--fg-1);
 }
 
+.log-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  padding: 8px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.log-ts {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-3);
+  white-space: nowrap;
+}
+
+.log-detail {
+  font-size: 11px;
+  color: var(--fg-2);
+  line-height: 1.35;
+}
+
 .note-meta {
   display: flex;
   align-items: center;

@@ -440,6 +440,25 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: {} },
     _meta: { ui: { visibility: ['model', 'app'] } },
   },
+  {
+    name: 'list_activity_log',
+    title: 'List Activity Log',
+    description: 'Return chronological activity history (tasks created/edited/moved, handoffs, decisions, captures, packs, deletions) with exact timestamps.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number' },
+      },
+    },
+    _meta: { ui: { visibility: ['model', 'app'] } },
+  },
+  {
+    name: 'clear_activity_log',
+    title: 'Clear Activity Log',
+    description: 'Clear all recorded activity log entries.',
+    inputSchema: { type: 'object', properties: {} },
+    _meta: { ui: { visibility: ['app'] } },
+  },
 ];
 
 const server = new Server(
@@ -503,13 +522,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const analysis = analyzeConversation(args.conversation_id, args.context_limit);
       const packs = packStore.list();
       const vault = memoryVault.list('all', 40);
+      const logs = memoryVault.listLogs(150);
       const prefs = readPrefs();
-      const validTabs = new Set(['monitor', 'packs', 'memory']);
+      const validTabs = new Set(['monitor', 'packs', 'memory', 'logs']);
       const structured = {
         activeTab: validTabs.has(args.tab) ? args.tab : 'monitor',
         analysis,
         packs,
         vault,
+        logs,
         prefs,
       };
       return {
@@ -569,11 +590,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (name === 'save_context_pack') {
       const saved = packStore.save(args);
       const packs = packStore.list();
+      memoryVault.appendLog({ action: 'pack_saved', entity: 'pack', title: saved.name, detail: saved.description });
       return {
         content: [
           {
             type: 'text',
-            text: `Bağlam paketi kaydedildi: "${saved.name}" (ID: ${saved.id}, ~${formatNumber(saved.totalTokens)} token)`,
+            text: `Context pack saved: "${saved.name}" (ID: ${saved.id}, ~${formatNumber(saved.totalTokens)} tokens)`,
           },
         ],
         structuredContent: { pack: saved, packs },
@@ -581,13 +603,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     if (name === 'delete_context_pack') {
+      const existing = packStore.get(args.id);
       const deleted = packStore.delete(args.id);
       const packs = packStore.list();
+      if (deleted) {
+        memoryVault.appendLog({ action: 'pack_deleted', entity: 'pack', title: existing?.name || args.id });
+      }
       return {
         content: [
           {
             type: 'text',
-            text: deleted ? `Bağlam paketi silindi (${args.id}).` : `Paket bulunamadı (${args.id}).`,
+            text: deleted ? `Context pack deleted (${args.id}).` : `Pack not found (${args.id}).`,
           },
         ],
         structuredContent: { deleted, packs },
@@ -737,6 +763,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             activeWebServer = null;
           },
         });
+        memoryVault.appendLog({ action: 'web_opened', entity: 'system', title: 'Context Brain Web', detail: activeWebServer.url });
       }
       return {
         content: [
@@ -746,6 +773,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           },
         ],
         structuredContent: { url: activeWebServer.url, port: activeWebServer.port },
+      };
+    }
+
+    if (name === 'list_activity_log') {
+      const logs = memoryVault.listLogs(Number(args.limit) || 150);
+      return {
+        content: [{ type: 'text', text: `${logs.length} activity log entries.` }],
+        structuredContent: { logs },
+      };
+    }
+
+    if (name === 'clear_activity_log') {
+      memoryVault.clearLogs();
+      return {
+        content: [{ type: 'text', text: 'Activity log cleared.' }],
+        structuredContent: { logs: [] },
       };
     }
 

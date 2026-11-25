@@ -1138,6 +1138,29 @@ body {
   border-bottom: 1px solid var(--border-1);
 }
 
+.due-chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  color: var(--fg-2);
+}
+
+.due-overdue {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  font-weight: 700;
+}
+
+.due-soon {
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font-weight: 700;
+}
+
 .log-top {
   display: flex;
   align-items: center;

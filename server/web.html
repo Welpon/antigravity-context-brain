@@ -183,6 +183,14 @@
     }
     .prio-high { color: #f87171; font-weight: 700; }
     .prio-low { color: var(--fg-3); }
+    .due-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-family: var(--mono); font-size: 10.5px; padding: 1px 6px;
+      border-radius: 4px; background: var(--card-2); color: var(--fg-2);
+    }
+    .due-overdue { background: rgba(239, 68, 68, 0.18); color: #f87171; font-weight: 700; }
+    .due-soon { background: rgba(234, 179, 8, 0.18); color: #facc15; font-weight: 700; }
+    .pin-on { color: #facc15 !important; }
     .card-row {
       display: flex; align-items: center; gap: 6px;
     }
@@ -390,10 +398,22 @@
           decision_saved: 'Decision Saved',
           resource_captured: 'Captured',
           note_deleted: 'Deleted',
+          note_restored: 'Restored',
+          note_pinned: 'Pinned',
+          note_unpinned: 'Unpinned',
+          vault_backup: 'Vault Backed Up',
           pack_saved: 'Pack Saved',
           pack_deleted: 'Pack Deleted',
           web_opened: 'Web Opened',
         },
+        backupBtn: 'Backup Vault',
+        restoreBtn: '↩ Restore',
+        snapshotBtn: '⚡ Snapshot Chat',
+        dueLbl: 'Due Date',
+        overdueLbl: 'Overdue',
+        todayLbl: 'Today',
+        toastBackup: (n) => `Backup saved (${n} files)!`,
+        toastRestored: 'Restored from trash!',
         sync: 'Sync',
         stopServer: 'Stop Server',
         idleNote: 'Auto-closes after 30 min idle',
@@ -479,10 +499,22 @@
           decision_saved: 'Karar Kaydedildi',
           resource_captured: 'Kaynak Yakalandı',
           note_deleted: 'Silindi',
+          note_restored: 'Geri Alındı',
+          note_pinned: 'Sabitlendi',
+          note_unpinned: 'Sabit Kaldırıldı',
+          vault_backup: 'Yedek Alındı',
           pack_saved: 'Paket Kaydedildi',
           pack_deleted: 'Paket Silindi',
           web_opened: 'Web Açıldı',
         },
+        backupBtn: 'Kasayı Yedekle',
+        restoreBtn: '↩ Geri Al',
+        snapshotBtn: '⚡ Sohbeti Kaydet',
+        dueLbl: 'Hedef Tarih',
+        overdueLbl: 'Gecikti',
+        todayLbl: 'Bugün',
+        toastBackup: (n) => `Yedek alındı (${n} dosya)!`,
+        toastRestored: 'Çöp kutusundan geri alındı!',
         sync: 'Eşitle',
         stopServer: 'Sunucuyu Kapat',
         idleNote: '30 dk kullanılmazsa kapanır',
@@ -791,6 +823,24 @@
       }
     }
 
+    function formatDueBadge(dueDate, status) {
+      if (!dueDate) return '';
+      const isClosed = status === 'done' || status === 'cancelled';
+      const today = new Date().toISOString().slice(0, 10);
+      let cls = 'due-badge';
+      let extra = '';
+      if (!isClosed) {
+        if (dueDate < today) {
+          cls += ' due-overdue';
+          extra = ` · ${t('overdueLbl')}`;
+        } else if (dueDate === today) {
+          cls += ' due-soon';
+          extra = ` · ${t('todayLbl')}`;
+        }
+      }
+      return `<span class="${cls}">📅 ${esc(dueDate)}${esc(extra)}</span>`;
+    }
+
     function openEditTaskModal(item) {
       const projects = state.data?.projects || [];
       document.getElementById('modalRoot').innerHTML = `
@@ -812,6 +862,10 @@
               <div>
                 <div style="font-size:11.5px;color:var(--fg-2);margin-bottom:4px;">${esc(t('projectLbl'))}</div>
                 <input id="etProject" class="input" list="projDatalist" style="width:100%;" value="${esc(item.project || '')}" />
+              </div>
+              <div>
+                <div style="font-size:11.5px;color:var(--fg-2);margin-bottom:4px;">${esc(t('dueLbl'))}</div>
+                <input id="etDue" type="date" class="input" style="width:100%;" value="${esc(item.dueDate || '')}" />
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                 <select id="etStatus" class="select">
@@ -844,6 +898,7 @@
             title: document.getElementById('etTitle').value.trim(),
             notes: document.getElementById('etNotes').value,
             project: document.getElementById('etProject').value.trim(),
+            dueDate: document.getElementById('etDue').value,
             status: document.getElementById('etStatus').value,
             priority: document.getElementById('etPrio').value,
             lang: state.lang,
@@ -878,14 +933,16 @@
             const prioText = t('prio')[item.priority] || t('prio').normal;
             return `
               <div class="task-card" draggable="true" data-drag-path="${esc(item.path)}">
-                <div class="task-title ${colId === 'done' || colId === 'cancelled' ? 'done' : ''}" data-open-note="${esc(item.path)}">${esc(item.title)}</div>
+                <div class="task-title ${colId === 'done' || colId === 'cancelled' ? 'done' : ''}" data-open-note="${esc(item.path)}">${item.pinned ? '📌 ' : ''}${esc(item.title)}</div>
                 ${item.notes ? `<div style="font-size:11.5px;color:var(--fg-2);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(item.notes)}</div>` : ''}
+                ${formatDueBadge(item.dueDate, colId)}
                 <div class="task-meta">
                   <span class="proj-chip" title="${esc(item.project || '-')}">${item.project ? `#${esc(item.project)}` : esc(t('generalTag'))}</span>
                   <span class="${prioClass}">${esc(prioText)}</span>
                 </div>
                 <div class="card-row">
                   <select class="status-select" data-status-path="${esc(item.path)}">${statusOpts}</select>
+                  <button class="del-icon ${item.pinned ? 'pin-on' : ''}" title="Pin" data-pin-path="${esc(item.path)}">📌</button>
                   <button class="del-icon" title="${esc(t('editTaskTitle'))}" data-edit-task="${esc(item.path)}">✎</button>
                   <button class="del-icon" title="${esc(t('deleteLbl'))}" data-del-path="${esc(item.path)}">🗑</button>
                 </div>
@@ -927,6 +984,7 @@
           <datalist id="projDatalist">
             ${projects.map((p) => `<option value="${esc(p.label)}"></option>`).join('')}
           </datalist>
+          <input id="qtDue" type="date" class="input" title="${esc(t('dueLbl'))}" />
           <select id="qtPrio" class="select">
             <option value="normal">${esc(t('prio').normal)}</option>
             <option value="high">${esc(t('prio').high)}</option>
@@ -1010,7 +1068,10 @@
             <h1 class="page-title">${esc(t('cockpitTitle'))}</h1>
             <div class="page-sub">${esc(a.model)} · ${esc(fmtRel(a.updatedAt))}</div>
           </div>
-          <select id="convSelect" class="select" style="max-width:340px;">${convOpts}</select>
+          <div class="toolbar">
+            <button id="btnWebSnapshot" class="btn btn-primary">${esc(t('snapshotBtn'))}</button>
+            <select id="convSelect" class="select" style="max-width:300px;">${convOpts}</select>
+          </div>
         </div>
 
         <div class="card">
@@ -1099,11 +1160,14 @@
               <span class="badge badge-${esc(i.kind)}">${esc(t('kinds')[i.kind] || i.kind)}</span>
               <span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">${esc(fmtRel(i.updatedAt))} · ~${fmtCompact(i.tokens)}</span>
             </div>
-            <div class="task-title" data-open-note="${esc(i.path)}">${esc(i.title)}</div>
+            <div class="task-title" data-open-note="${esc(i.path)}">${i.pinned ? '📌 ' : ''}${esc(i.title)}</div>
             <div style="font-size:12px;color:var(--fg-2);">${esc(i.snippet || i.preview || '')}</div>
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--fg-3);font-family:var(--mono);">
               <span>${esc(i.relativePath)}</span>
-              <button class="del-icon" data-del-path="${esc(i.path)}">🗑</button>
+              <div>
+                <button class="del-icon ${i.pinned ? 'pin-on' : ''}" data-pin-path="${esc(i.path)}">📌</button>
+                <button class="del-icon" data-del-path="${esc(i.path)}">🗑</button>
+              </div>
             </div>
           </div>
         `
@@ -1141,12 +1205,12 @@
 
     function logFieldLabel(field) {
       const tr = {
-        title: 'Başlık', status: 'Durum', notes: 'Açıklama', project: 'Proje', priority: 'Öncelik',
+        title: 'Başlık', status: 'Durum', notes: 'Açıklama', project: 'Proje', priority: 'Öncelik', dueDate: 'Hedef Tarih',
         summary: 'Sonuç', openItems: 'Açık Konular', nextStep: 'Sonraki Adım',
         decision: 'Karar', rationale: 'Gerekçe', source: 'Kaynak', file: 'Dosya',
       };
       const en = {
-        title: 'Title', status: 'Status', notes: 'Description', project: 'Project', priority: 'Priority',
+        title: 'Title', status: 'Status', notes: 'Description', project: 'Project', priority: 'Priority', dueDate: 'Due Date',
         summary: 'Outcome', openItems: 'Open Items', nextStep: 'Next Step',
         decision: 'Decision', rationale: 'Rationale', source: 'Source', file: 'File',
       };
@@ -1236,6 +1300,11 @@
                         ${statusMove ? `<span class="spike-pill">${esc(statusMove)}</span>` : ''}
                         ${l.project ? `<span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">#${esc(l.project)}</span>` : ''}
                         <span class="log-source">${esc(logSourceLabel(l.source))}</span>
+                        ${
+                          l.canRestore
+                            ? `<button class="btn btn-sm" data-restore-trash="${esc(l.trashPath)}" data-restore-orig="${esc(l.originalPath)}">${esc(t('restoreBtn'))}</button>`
+                            : ''
+                        }
                       </div>
                       ${!isOpen && l.detail ? `<div style="font-size:12px;color:var(--fg-2);margin-top:4px;">${esc(l.detail)}</div>` : ''}
                     </div>
@@ -1320,6 +1389,7 @@
               </nav>
             </div>
             <div class="side-footer">
+              <button id="btnBackup" class="btn">💾 ${esc(t('backupBtn'))}</button>
               <button id="btnLang" class="btn">${state.lang === 'tr' ? '🌐 Dil: TR' : '🌐 Lang: EN'}</button>
               <button id="btnSync" class="btn btn-warn">↻ ${esc(t('sync'))}</button>
               <button id="btnStop" class="btn">${esc(t('stopServer'))}</button>
@@ -1358,6 +1428,30 @@
         await api('/api/prefs', { method: 'POST', body: JSON.stringify({ lang: state.lang }) }).catch(() => {});
       });
 
+      document.getElementById('btnBackup')?.addEventListener('click', async () => {
+        const res = await api('/api/backup', { method: 'POST' });
+        showToast(t('toastBackup')(res.fileCount));
+        await loadState(true);
+      });
+
+      document.getElementById('btnWebSnapshot')?.addEventListener('click', async () => {
+        const a = state.data?.analysis;
+        if (!a || !a.found) return;
+        const topLabels = (a.topSpikes || []).slice(0, 3).map((s) => s.label).join(', ');
+        await api('/api/handoff', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: a.title,
+            summary: `${a.model} · ${a.turns} turns · ${fmtCompact(a.latestContextTokens)} tokens (${a.utilizationPct}%).${topLabels ? ` Key steps: ${topLabels}` : ''}`,
+            openItems: '-',
+            nextStep: state.lang === 'tr' ? 'Kaldığın yerden devam et.' : 'Continue from where we left off.',
+            lang: state.lang,
+          }),
+        });
+        showToast(t('toastSaved'));
+        await loadState(true);
+      });
+
       document.getElementById('btnSync')?.addEventListener('click', () => loadState(false));
 
       document.getElementById('btnStop')?.addEventListener('click', async () => {
@@ -1381,12 +1475,13 @@
         const title = document.getElementById('qtTitle').value.trim();
         const notes = document.getElementById('qtNotes').value.trim();
         const project = document.getElementById('qtProject').value.trim();
+        const dueDate = document.getElementById('qtDue').value;
         const priority = document.getElementById('qtPrio').value;
         const status = document.getElementById('qtStatus').value;
         if (!title) return;
         await api('/api/tasks', {
           method: 'POST',
-          body: JSON.stringify({ title, notes, project, priority, status, lang: state.lang }),
+          body: JSON.stringify({ title, notes, project, dueDate, priority, status, lang: state.lang }),
         });
         showToast(t('toastSaved'));
         await loadState(true);
@@ -1406,6 +1501,25 @@
             body: JSON.stringify({ path: sel.dataset.statusPath, status: sel.value }),
           });
           showToast(t('toastSaved'));
+          await loadState(true);
+        };
+      });
+
+      document.querySelectorAll('[data-pin-path]').forEach((btn) => {
+        btn.onclick = async () => {
+          await api('/api/note/pin', { method: 'POST', body: JSON.stringify({ path: btn.dataset.pinPath }) });
+          await loadState(true);
+        };
+      });
+
+      document.querySelectorAll('[data-restore-trash]').forEach((btn) => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          await api('/api/note/restore', {
+            method: 'POST',
+            body: JSON.stringify({ trashPath: btn.dataset.restoreTrash, originalPath: btn.dataset.restoreOrig }),
+          });
+          showToast(t('toastRestored'));
           await loadState(true);
         };
       });

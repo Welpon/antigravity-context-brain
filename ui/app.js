@@ -185,10 +185,22 @@ const I18N = {
       decision_saved: 'Karar Kaydedildi',
       resource_captured: 'Kaynak Yakalandı',
       note_deleted: 'Silindi',
+      note_restored: 'Geri Alındı',
+      note_pinned: 'Sabitlendi',
+      note_unpinned: 'Sabit Kaldırıldı',
+      vault_backup: 'Yedek Alındı',
       pack_saved: 'Paket Kaydedildi',
       pack_deleted: 'Paket Silindi',
       web_opened: 'Web Açıldı',
     },
+    dueLbl: 'Hedef Tarih',
+    overdueLbl: 'Gecikti',
+    todayLbl: 'Bugün',
+    backupBtn: '💾 Yedekle',
+    snapshotBtn: '⚡ Sohbeti Kaydet',
+    restoreBtn: '↩ Geri Al',
+    toastBackup: (n) => `Yedek alındı (${n} dosya)!`,
+    toastRestored: 'Çöp kutusundan geri alındı!',
   },
   en: {
     tabMonitor: 'Monitor',
@@ -369,10 +381,22 @@ const I18N = {
       decision_saved: 'Decision Saved',
       resource_captured: 'Captured',
       note_deleted: 'Deleted',
+      note_restored: 'Restored',
+      note_pinned: 'Pinned',
+      note_unpinned: 'Unpinned',
+      vault_backup: 'Vault Backed Up',
       pack_saved: 'Pack Saved',
       pack_deleted: 'Pack Deleted',
       web_opened: 'Web Opened',
     },
+    dueLbl: 'Due Date',
+    overdueLbl: 'Overdue',
+    todayLbl: 'Today',
+    backupBtn: '💾 Backup',
+    snapshotBtn: '⚡ Snapshot',
+    restoreBtn: '↩ Restore',
+    toastBackup: (n) => `Backup saved (${n} files)!`,
+    toastRestored: 'Restored from trash!',
   },
 };
 
@@ -876,6 +900,7 @@ async function handleSaveTask(e) {
   const form = e.target;
   const title = form.taskTitle.value.trim();
   const project = (form.taskProject?.value || '').trim();
+  const dueDate = form.taskDue?.value || '';
   const status = form.taskStatus?.value || 'inbox';
   const priority = form.taskPriority.value;
   const notes = form.taskNotes.value;
@@ -889,13 +914,14 @@ async function handleSaveTask(e) {
           path: state.editingTaskPath,
           title,
           project,
+          dueDate,
           status,
           priority,
           notes,
           lang: state.lang,
           source: 'antigravity',
         })
-      : await callTool('save_task', { title, project, status, priority, notes, lang: state.lang, source: 'antigravity' });
+      : await callTool('save_task', { title, project, dueDate, status, priority, notes, lang: state.lang, source: 'antigravity' });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
     state.editingTaskPath = null;
@@ -1006,6 +1032,61 @@ async function handleDeleteVaultNote(filePath) {
     render();
   } catch (err) {
     showToast(t('toastErrDelete', err.message));
+  }
+}
+
+async function handleRestoreVaultNote(trashPath, originalPath) {
+  try {
+    const res = await callTool('restore_vault_note', { trashPath, originalPath, source: 'antigravity' });
+    if (res?.vault) state.vault = res.vault;
+    if (Array.isArray(res?.logs)) state.logs = res.logs;
+    showToast(t('toastRestored'));
+    render();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function handleTogglePin(filePath) {
+  try {
+    const res = await callTool('toggle_pin', { path: filePath, source: 'antigravity' });
+    if (res?.vault) state.vault = res.vault;
+    if (Array.isArray(res?.logs)) state.logs = res.logs;
+    render();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function handleBackupVault() {
+  try {
+    const res = await callTool('backup_vault', { source: 'antigravity' });
+    if (Array.isArray(res?.logs)) state.logs = res.logs;
+    showToast(t('toastBackup', res?.fileCount ?? 0));
+    render();
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function handleSnapshotChat() {
+  const a = state.analysis;
+  if (!a || !a.found) return;
+  const topLabels = (a.topSpikes || []).slice(0, 3).map((s) => localizeStepLabel(s.label)).join(', ');
+  try {
+    const res = await callTool('save_handoff', {
+      title: a.title,
+      summary: `${a.model} · ${a.turns} ${t('turnsUnit')} · ${fmtCompact(a.latestContextTokens)} (${a.utilizationPct}%).${topLabels ? ` ${topLabels}` : ''}`,
+      openItems: '-',
+      nextStep: state.lang === 'tr' ? 'Kaldığın yerden devam et.' : 'Continue where we left off.',
+      lang: state.lang,
+      source: 'antigravity',
+    });
+    if (res?.vault) state.vault = res.vault;
+    showToast(t('toastHandoffSaved'));
+    render();
+  } catch (err) {
+    showToast(err.message);
   }
 }
 
@@ -1797,6 +1878,10 @@ function renderMemory() {
               ${projectList.map((p) => `<option value="${esc(p)}"></option>`).join('')}
             </datalist>
           </div>
+          <div class="field">
+            <label for="taskDue">${esc(t('dueLbl'))}</label>
+            <input id="taskDue" name="taskDue" type="date" class="input" value="${esc(editingTask?.dueDate || '')}" />
+          </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
             <div class="field">
               <label for="taskStatus">${esc(t('taskStatusLbl'))}</label>
@@ -1863,6 +1948,19 @@ function renderMemory() {
     `
     : '';
 
+  const formatDueChip = (dueDate, status) => {
+    if (!dueDate) return '';
+    const closed = status === 'done' || status === 'cancelled';
+    const today = new Date().toISOString().slice(0, 10);
+    let cls = 'due-chip';
+    let extra = '';
+    if (!closed) {
+      if (dueDate < today) { cls += ' due-overdue'; extra = ` · ${t('overdueLbl')}`; }
+      else if (dueDate === today) { cls += ' due-soon'; extra = ` · ${t('todayLbl')}`; }
+    }
+    return `<span class="${cls}">📅 ${esc(dueDate)}${esc(extra)}</span>`;
+  };
+
   const renderVaultItemCard = (item) => {
     const isTaskDone = item.kind === 'task' && (item.status === 'done' || item.status === 'cancelled');
     const taskStatusSelect =
@@ -1878,10 +1976,10 @@ function renderMemory() {
               <div style="min-width:0;flex:1;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
                   <span class="kind-badge kind-${esc(item.kind)}">${esc(item.sourceType ? localizeSourceType(item.sourceType) : kindLabel(item.kind))}</span>
-                  <h4 class="pack-name ${isTaskDone ? 'task-done' : ''}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.title)}</h4>
+                  <h4 class="pack-name ${isTaskDone ? 'task-done' : ''}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.pinned ? '📌 ' : ''}${esc(item.title)}</h4>
                 </div>
                 <div class="note-meta">
-                  ${item.project ? `<span>#${esc(item.project)}</span> · ` : ''}<span>${esc(item.relativePath)}</span> · <span>${esc(fmtRelativeTime(item.updatedAt))}</span>
+                  ${item.project ? `<span>#${esc(item.project)}</span> · ` : ''}${formatDueChip(item.dueDate, item.status)} <span>${esc(fmtRelativeTime(item.updatedAt))}</span>
                 </div>
               </div>
               <span class="badge">~${fmtCompact(item.tokens)}</span>
@@ -1889,6 +1987,7 @@ function renderMemory() {
             ${item.kind === 'task' && item.notes ? `<div class="note-preview">${esc(item.notes)}</div>` : item.snippet || item.preview ? `<div class="note-preview">${esc(item.snippet || item.preview)}</div>` : ''}
             <div class="pack-actions">
               ${taskStatusSelect}
+              <button class="btn btn-sm" data-vaction="pin" data-path="${esc(item.path)}" title="Pin">${item.pinned ? '📌' : '📍'}</button>
               ${item.kind === 'task' ? `<button class="btn btn-sm" data-vaction="editTask" data-path="${esc(item.path)}">${esc(t('editBtn'))}</button>` : ''}
               <button class="btn btn-sm" data-vaction="open" data-uri="${esc(item.fileUri)}">${esc(t('openFileBtn'))}</button>
               ${
@@ -1955,13 +2054,17 @@ function renderMemory() {
         <div class="vault-path" title="${esc(v?.vaultDir || '')}">📁 ${esc(v?.vaultDir || '~/Antigravity-Brain')}</div>
         <div class="vault-hint">${esc(t('vaultHint'))}</div>
       </div>
-      ${
-        v?.agentsFileUri
-          ? `<button id="btnOpenAgents" class="btn btn-sm" data-uri="${esc(
-              state.lang === 'tr' ? v.agentsTrFileUri || v.agentsFileUri : v.agentsFileUri
-            )}">${esc(t('openAgents'))}</button>`
-          : ''
-      }
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button id="btnSnapshotChat" class="btn btn-sm" title="${esc(t('snapshotBtn'))}">${esc(t('snapshotBtn'))}</button>
+        <button id="btnBackupVault" class="btn btn-sm" title="${esc(t('backupBtn'))}">${esc(t('backupBtn'))}</button>
+        ${
+          v?.agentsFileUri
+            ? `<button id="btnOpenAgents" class="btn btn-sm" data-uri="${esc(
+                state.lang === 'tr' ? v.agentsTrFileUri || v.agentsFileUri : v.agentsFileUri
+              )}">${esc(t('openAgents'))}</button>`
+            : ''
+        }
+      </div>
     </div>
 
     ${attachedBanner}
@@ -2009,12 +2112,12 @@ function formatDayHeading(iso) {
 
 function logFieldLabel(field) {
   const tr = {
-    title: 'Başlık', status: 'Durum', notes: 'Açıklama', project: 'Proje', priority: 'Öncelik',
+    title: 'Başlık', status: 'Durum', notes: 'Açıklama', project: 'Proje', priority: 'Öncelik', dueDate: 'Hedef Tarih',
     summary: 'Sonuç', openItems: 'Açık Konular', nextStep: 'Sonraki Adım',
     decision: 'Karar', rationale: 'Gerekçe', source: 'Kaynak', file: 'Dosya',
   };
   const en = {
-    title: 'Title', status: 'Status', notes: 'Description', project: 'Project', priority: 'Priority',
+    title: 'Title', status: 'Status', notes: 'Description', project: 'Project', priority: 'Priority', dueDate: 'Due Date',
     summary: 'Outcome', openItems: 'Open Items', nextStep: 'Next Step',
     decision: 'Decision', rationale: 'Rationale', source: 'Source', file: 'File',
   };
@@ -2108,6 +2211,11 @@ function renderLogs() {
                 <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
                   <span class="kind-badge kind-${esc(badgeKind)}">${esc(actionLabel)}</span>
                   <span class="tag">${esc(logSourceLabel(l.source))}</span>
+                  ${
+                    l.canRestore
+                      ? `<button class="btn btn-sm" data-restore-trash="${esc(l.trashPath)}" data-restore-orig="${esc(l.originalPath)}">${esc(t('restoreBtn'))}</button>`
+                      : ''
+                  }
                 </div>
                 <span class="log-ts">${esc(timeOnly)} · ${esc(fmtRelativeTime(l.timestamp))} ${changes.length > 0 ? (isOpen ? '▴' : '▾') : ''}</span>
               </div>
@@ -2223,6 +2331,13 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll('[data-restore-trash]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleRestoreVaultNote(btn.dataset.restoreTrash, btn.dataset.restoreOrig);
+    });
+  });
+
   document.querySelectorAll('[data-alog-toggle]').forEach((card) => {
     card.addEventListener('click', () => {
       const id = card.dataset.alogToggle;
@@ -2239,6 +2354,8 @@ function bindEvents() {
     const uri = e.currentTarget.dataset.uri;
     if (uri) handleOpenVaultFile(uri);
   });
+  document.getElementById('btnBackupVault')?.addEventListener('click', () => handleBackupVault());
+  document.getElementById('btnSnapshotChat')?.addEventListener('click', () => handleSnapshotChat());
 
   document.getElementById('btnFormHandoff')?.addEventListener('click', () => {
     state.editingPackId = null;
@@ -2306,7 +2423,9 @@ function bindEvents() {
   document.querySelectorAll('[data-vaction]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const { vaction, uri, path: filePath, title } = btn.dataset;
-      if (vaction === 'editTask') {
+      if (vaction === 'pin') {
+        handleTogglePin(filePath);
+      } else if (vaction === 'editTask') {
         state.editingTaskPath = filePath;
         state.vaultForm = 'task';
         render();

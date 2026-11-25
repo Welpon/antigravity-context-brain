@@ -232,6 +232,26 @@ export function startWebServer({
         return;
       }
 
+      if (req.method === 'POST' && pathname === '/api/note/restore') {
+        const body = await readBodyJson(req);
+        const item = vault.restoreNote(body.trashPath, body.originalPath, 'web');
+        sendJson(res, 200, { item, vault: vault.list('all', 200), logs: vault.listLogs(200) });
+        return;
+      }
+
+      if (req.method === 'POST' && pathname === '/api/note/pin') {
+        const body = await readBodyJson(req);
+        const item = vault.togglePin(body.path, 'web');
+        sendJson(res, 200, { item, vault: vault.list('all', 200), logs: vault.listLogs(200) });
+        return;
+      }
+
+      if (req.method === 'POST' && pathname === '/api/backup') {
+        const resBackup = vault.createBackup('web');
+        sendJson(res, 200, { ...resBackup, logs: vault.listLogs(200) });
+        return;
+      }
+
       if (req.method === 'POST' && pathname === '/api/shutdown') {
         sendJson(res, 200, { ok: true });
         setTimeout(shutdown, 150);

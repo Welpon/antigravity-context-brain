@@ -184,6 +184,7 @@ export class MemoryVault {
   constructor(vaultDir = process.env.ANTIGRAVITY_VAULT_DIR || DEFAULT_VAULT_DIR) {
     this.vaultDir = vaultDir;
     this.logPath = path.join(this.vaultDir, '.activity-log.jsonl');
+    this.trashDir = path.join(this.vaultDir, '.trash');
     this.ensureStructure();
   }
 
@@ -195,6 +196,8 @@ export class MemoryVault {
     detail = '',
     project = '',
     relativePath = '',
+    trashPath = '',
+    originalPath = '',
     fromStatus = '',
     toStatus = '',
     changes = [],
@@ -211,6 +214,8 @@ export class MemoryVault {
         detail: String(detail || ''),
         project: String(project || ''),
         relativePath: String(relativePath || ''),
+        trashPath: String(trashPath || ''),
+        originalPath: String(originalPath || ''),
         fromStatus: String(fromStatus || ''),
         toStatus: String(toStatus || ''),
         changes: Array.isArray(changes) ? changes : [],
@@ -231,7 +236,11 @@ export class MemoryVault {
       const trimmed = line.trim();
       if (!trimmed) continue;
       try {
-        items.push(JSON.parse(trimmed));
+        const parsed = JSON.parse(trimmed);
+        if (parsed.trashPath) {
+          parsed.canRestore = fs.existsSync(parsed.trashPath);
+        }
+        items.push(parsed);
       } catch {
         // skip malformed line
       }
@@ -317,6 +326,8 @@ export class MemoryVault {
       status: kind === 'task' ? normalizeTaskStatus(meta.status) : (meta.status || ''),
       priority: meta.priority || '',
       project: meta.project || '',
+      dueDate: meta.due_date || '',
+      pinned: meta.pinned === 'true',
       sourceType: meta.source_type || '',
       sourceUrl: meta.source_url || '',
       title,
@@ -340,7 +351,7 @@ export class MemoryVault {
         // Ignore unreadable files
       }
     }
-    items.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    items.sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || b.mtimeMs - a.mtimeMs);
 
     const counts = {
       all: items.length,
@@ -502,7 +513,7 @@ export class MemoryVault {
     return item;
   }
 
-  saveTask({ title, notes = '', priority = 'normal', status = 'inbox', project = '', tags = [], lang = 'en', source = 'ai' }) {
+  saveTask({ title, notes = '', priority = 'normal', status = 'inbox', project = '', dueDate = '', pinned = false, tags = [], lang = 'en', source = 'ai' }) {
     this.ensureStructure();
     const isTr = lang === 'tr';
     const cleanTitle = String(title || '').trim();
@@ -512,6 +523,7 @@ export class MemoryVault {
     const tagStr = Array.isArray(tags) ? tags.join(', ') : String(tags || '');
     const cleanStatus = normalizeTaskStatus(status);
     const cleanProject = String(project || '').trim();
+    const cleanDue = String(dueDate || '').trim();
 
     const content = [
       '---',
@@ -519,6 +531,8 @@ export class MemoryVault {
       `status: "${cleanStatus}"`,
       `priority: "${String(priority || 'normal').trim()}"`,
       ...(cleanProject ? [`project: "${cleanProject.replace(/"/g, '\\"')}"`] : []),
+      ...(cleanDue ? [`due_date: "${cleanDue}"`] : []),
+      ...(pinned ? [`pinned: true`] : []),
       `title: "${cleanTitle.replace(/"/g, '\\"')}"`,
       `created_at: "${new Date().toISOString()}"`,
       ...(tagStr ? [`tags: "${tagStr}"`] : []),
@@ -535,6 +549,7 @@ export class MemoryVault {
     const item = this._readItem(filePath);
     const changes = [{ field: 'status', next: cleanStatus }];
     if (cleanProject) changes.push({ field: 'project', next: cleanProject });
+    if (cleanDue) changes.push({ field: 'dueDate', next: cleanDue });
     if (notes.trim()) changes.push({ field: 'notes', next: notes.trim() });
     changes.push({ field: 'file', next: item.relativePath });
     this.appendLog({
@@ -551,7 +566,7 @@ export class MemoryVault {
     return item;
   }
 
-  updateTask({ path: filePath, title, notes, project, priority, status, lang = 'en', source = 'ai' }) {
+  updateTask({ path: filePath, title, notes, project, priority, status, dueDate, pinned, lang = 'en', source = 'ai' }) {
     const resolved = path.resolve(String(filePath || ''));
     const vaultResolved = path.resolve(this.vaultDir);
     if (!resolved.startsWith(vaultResolved) || !fs.existsSync(resolved)) {
@@ -567,6 +582,8 @@ export class MemoryVault {
     const cleanStatus = normalizeTaskStatus(status ?? existingItem.status);
     const cleanPriority = String(priority ?? existingItem.priority ?? 'normal').trim();
     const cleanProject = String(project ?? existingItem.project ?? '').trim();
+    const cleanDue = String(dueDate ?? existingItem.dueDate ?? '').trim();
+    const cleanPinned = pinned !== undefined ? Boolean(pinned) : Boolean(existingItem.pinned);
     const cleanNotes = String(notes ?? existingItem.notes ?? '').trim();
     const createdAt = meta.created_at || new Date().toISOString();
     const tagStr = meta.tags || '';
@@ -577,6 +594,8 @@ export class MemoryVault {
       `status: "${cleanStatus}"`,
       `priority: "${cleanPriority}"`,
       ...(cleanProject ? [`project: "${cleanProject.replace(/"/g, '\\"')}"`] : []),
+      ...(cleanDue ? [`due_date: "${cleanDue}"`] : []),
+      ...(cleanPinned ? [`pinned: true`] : []),
       `title: "${cleanTitle.replace(/"/g, '\\"')}"`,
       `created_at: "${createdAt}"`,
       ...(tagStr ? [`tags: "${tagStr}"`] : []),
@@ -595,6 +614,7 @@ export class MemoryVault {
     if (existingItem.title !== cleanTitle) changes.push({ field: 'title', old: existingItem.title, next: cleanTitle });
     if (existingItem.status !== cleanStatus) changes.push({ field: 'status', old: existingItem.status, next: cleanStatus });
     if ((existingItem.project || '') !== cleanProject) changes.push({ field: 'project', old: existingItem.project || '-', next: cleanProject || '-' });
+    if ((existingItem.dueDate || '') !== cleanDue) changes.push({ field: 'dueDate', old: existingItem.dueDate || '-', next: cleanDue || '-' });
     if ((existingItem.priority || 'normal') !== cleanPriority) changes.push({ field: 'priority', old: existingItem.priority || 'normal', next: cleanPriority });
     if ((existingItem.notes || '') !== cleanNotes) changes.push({ field: 'notes', old: existingItem.notes || '', next: cleanNotes || '-' });
     changes.push({ field: 'file', next: item.relativePath });
@@ -753,7 +773,10 @@ export class MemoryVault {
     } catch {
       // ignore
     }
-    fs.unlinkSync(resolved);
+    fs.mkdirSync(this.trashDir, { recursive: true });
+    const trashName = `${Date.now()}-${path.basename(resolved)}`;
+    const trashPath = path.join(this.trashDir, trashName);
+    fs.renameSync(resolved, trashPath);
     if (info) {
       this.appendLog({
         action: 'note_deleted',
@@ -762,9 +785,104 @@ export class MemoryVault {
         title: info.title,
         project: info.project,
         relativePath: info.relativePath,
+        trashPath,
+        originalPath: resolved,
         changes: [{ field: 'file', next: info.relativePath }],
       });
     }
     return true;
+  }
+
+  restoreNote(trashPath, originalPath, source = 'ai') {
+    const resTrash = path.resolve(String(trashPath || ''));
+    const resOrig = path.resolve(String(originalPath || ''));
+    const vaultResolved = path.resolve(this.vaultDir);
+    if (!resTrash.startsWith(path.resolve(this.trashDir)) || !resOrig.startsWith(vaultResolved)) {
+      throw new Error('Invalid restore path.');
+    }
+    if (!fs.existsSync(resTrash)) {
+      throw new Error('Trash file no longer exists.');
+    }
+    fs.mkdirSync(path.dirname(resOrig), { recursive: true });
+    fs.renameSync(resTrash, resOrig);
+    const item = this._readItem(resOrig);
+    this.appendLog({
+      action: 'note_restored',
+      entity: item.kind,
+      source,
+      title: item.title,
+      project: item.project,
+      relativePath: item.relativePath,
+      changes: [{ field: 'file', next: item.relativePath }],
+    });
+    return item;
+  }
+
+  togglePin(filePath, source = 'ai') {
+    const resolved = path.resolve(String(filePath || ''));
+    const vaultResolved = path.resolve(this.vaultDir);
+    if (!resolved.startsWith(vaultResolved) || !fs.existsSync(resolved)) {
+      throw new Error('File not found.');
+    }
+    let raw = fs.readFileSync(resolved, 'utf8');
+    const isPinned = /^pinned:\s*true\b/m.test(raw);
+    const nextPinned = !isPinned;
+
+    if (/^pinned:\s*.+$/m.test(raw)) {
+      raw = raw.replace(/^pinned:\s*.+$/m, `pinned: ${nextPinned}`);
+    } else if (/^---\r?\n/.test(raw)) {
+      raw = raw.replace(/^---\r?\n/, `---\npinned: ${nextPinned}\n`);
+    } else {
+      raw = `---\npinned: ${nextPinned}\n---\n\n${raw}`;
+    }
+    fs.writeFileSync(resolved, raw, 'utf8');
+    const item = this._readItem(resolved);
+    this.appendLog({
+      action: nextPinned ? 'note_pinned' : 'note_unpinned',
+      entity: item.kind,
+      source,
+      title: item.title,
+      project: item.project,
+      relativePath: item.relativePath,
+      changes: [{ field: 'file', next: item.relativePath }],
+    });
+    return item;
+  }
+
+  createBackup(source = 'ai') {
+    this.ensureStructure();
+    const backupsRoot = path.join(path.dirname(this.vaultDir), `${path.basename(this.vaultDir)}-Backups`);
+    const backupName = `backup-${dateStamp()}-${timeStamp()}`;
+    const targetDir = path.join(backupsRoot, backupName);
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    let fileCount = 0;
+    const copyRec = (src, dest) => {
+      if (!fs.existsSync(src)) return;
+      for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+        if (entry.name === '.trash') continue;
+        const s = path.join(src, entry.name);
+        const d = path.join(dest, entry.name);
+        if (entry.isDirectory()) {
+          fs.mkdirSync(d, { recursive: true });
+          copyRec(s, d);
+        } else if (entry.isFile()) {
+          fs.copyFileSync(s, d);
+          fileCount += 1;
+        }
+      }
+    };
+    copyRec(this.vaultDir, targetDir);
+
+    this.appendLog({
+      action: 'vault_backup',
+      entity: 'system',
+      source,
+      title: backupName,
+      detail: `${fileCount} files backed up`,
+      relativePath: targetDir,
+      changes: [{ field: 'file', next: targetDir }],
+    });
+    return { backupDir: targetDir, backupName, fileCount };
   }
 }

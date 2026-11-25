@@ -319,6 +319,7 @@ const TOOLS = [
         title: { type: 'string', description: 'Task title.' },
         notes: { type: 'string', description: 'Task details.' },
         project: { type: 'string', description: 'Optional project or conversation name.' },
+        dueDate: { type: 'string', description: 'Optional due date (YYYY-MM-DD).' },
         status: { type: 'string', enum: ['inbox', 'active', 'waiting', 'done', 'cancelled'] },
         priority: { type: 'string', enum: ['high', 'normal', 'low', 'yuksek', 'dusuk'] },
         tags: { type: 'array', items: { type: 'string' } },
@@ -339,6 +340,7 @@ const TOOLS = [
         title: { type: 'string', description: 'Updated task title.' },
         notes: { type: 'string', description: 'Updated task description/notes.' },
         project: { type: 'string', description: 'Updated project or chat name.' },
+        dueDate: { type: 'string', description: 'Updated due date (YYYY-MM-DD).' },
         priority: { type: 'string', enum: ['high', 'normal', 'low'] },
         status: { type: 'string', enum: ['inbox', 'active', 'waiting', 'done', 'cancelled'] },
         lang: { type: 'string', enum: ['en', 'tr'] },
@@ -458,6 +460,47 @@ const TOOLS = [
     description: 'Clear all recorded activity log entries.',
     inputSchema: { type: 'object', properties: {} },
     _meta: { ui: { visibility: ['app'] } },
+  },
+  {
+    name: 'restore_vault_note',
+    title: 'Restore Deleted Note',
+    description: 'Restore a deleted note or task from .trash back to its original path.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        trashPath: { type: 'string' },
+        originalPath: { type: 'string' },
+        source: { type: 'string' },
+      },
+      required: ['trashPath', 'originalPath'],
+    },
+    _meta: { ui: { visibility: ['model', 'app'] } },
+  },
+  {
+    name: 'toggle_pin',
+    title: 'Pin or Unpin Note',
+    description: 'Pin or unpin a note or task so pinned items stay at the top.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        source: { type: 'string' },
+      },
+      required: ['path'],
+    },
+    _meta: { ui: { visibility: ['model', 'app'] } },
+  },
+  {
+    name: 'backup_vault',
+    title: 'Backup Memory Vault',
+    description: 'Create a timestamped backup copy of ~/Antigravity-Brain under ~/Antigravity-Brain-Backups.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source: { type: 'string' },
+      },
+    },
+    _meta: { ui: { visibility: ['model', 'app'] } },
   },
 ];
 
@@ -789,6 +832,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return {
         content: [{ type: 'text', text: 'Activity log cleared.' }],
         structuredContent: { logs: [] },
+      };
+    }
+
+    if (name === 'restore_vault_note') {
+      const item = memoryVault.restoreNote(args.trashPath, args.originalPath, args.source || 'ai');
+      return {
+        content: [{ type: 'text', text: `Restored: ${item.title}` }],
+        structuredContent: { item, vault: memoryVault.list('all', 40), logs: memoryVault.listLogs(150) },
+      };
+    }
+
+    if (name === 'toggle_pin') {
+      const item = memoryVault.togglePin(args.path, args.source || 'ai');
+      return {
+        content: [{ type: 'text', text: `${item.pinned ? 'Pinned' : 'Unpinned'}: ${item.title}` }],
+        structuredContent: { item, vault: memoryVault.list('all', 40), logs: memoryVault.listLogs(150) },
+      };
+    }
+
+    if (name === 'backup_vault') {
+      const res = memoryVault.createBackup(args.source || 'ai');
+      return {
+        content: [{ type: 'text', text: `Backup created: ${res.backupDir} (${res.fileCount} files)` }],
+        structuredContent: { ...res, logs: memoryVault.listLogs(150) },
       };
     }
 

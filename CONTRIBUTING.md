@@ -6,8 +6,8 @@ Pull requests, bug reports, and feature suggestions are very welcome!
 
 1. **Fork** this repository and clone your fork:
    ```bash
-   git clone https://github.com/<YOUR_USERNAME>/antigravity-context-window.git
-   cd antigravity-context-window
+   git clone https://github.com/<YOUR_USERNAME>/antigravity-context-brain.git
+   cd antigravity-context-brain
    npm install
    ```
 2. Create a feature branch:
@@ -18,7 +18,7 @@ Pull requests, bug reports, and feature suggestions are very welcome!
    ```bash
    npm run build:ui
    ```
-4. Test locally in Antigravity (`~/.gemini/config/plugins/context-window`). For changes in `server/`, restart the `context-window` MCP server from Antigravity **MCP Servers** settings.
+4. Test locally in Antigravity (`~/.gemini/config/plugins/context-brain`). For changes in `server/`, restart the `context-brain` MCP server from Antigravity **MCP Servers** settings.
 5. Commit and open a **Pull Request**:
    ```bash
    git add .

@@ -1,15 +1,15 @@
 ---
-name: context-window
-description: Monitor live Antigravity context window usage, token breakdown, cache hit rate, heaviest steps, and manage reusable Context Packs (notes and local files). Use when the user asks about token usage, context window capacity, why context is filling up, or wants to create/attach reusable context packs.
+name: context-brain
+description: Monitor live Antigravity context window usage, token breakdown, cache hit rate, top spikes, heaviest steps, and manage your portable Markdown Memory Vault (sessions, tasks, decisions, inbox, and reusable Context Packs). Use when the user asks about token usage, context window capacity, saving/searching memory notes, or managing context packs.
 ---
 
-# Context Window Plugin Skill
+# Context Brain Plugin Skill
 
-This plugin provides an interactive MCP App UI (openable in the side pane, sidebar, or inline) and MCP tools to inspect real Antigravity conversation token telemetry and manage reusable Context Packs.
+This plugin provides an interactive MCP App UI (openable in the side pane, sidebar, or inline) and MCP tools to inspect real Antigravity conversation token telemetry and manage a portable Markdown Memory Vault (`~/Antigravity-Brain`) plus reusable Context Packs.
 
 ## Available Tools
 
-All tools are exposed by the `context-window` MCP server (namespaced as `context-window_context-window`):
+All tools are exposed by the `context-brain` MCP server (namespaced as `context-brain_context-brain`):
 
 1. `open_context_window` — Opens the interactive Context Window UI panel (Monitor + Context Packs). Call this when the user asks to view, open, or inspect the context window panel visually.
    - Optional args: `conversation_id`, `tab` (`"monitor"` or `"packs"`), `context_limit`.

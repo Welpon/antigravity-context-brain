@@ -1,10 +1,10 @@
-# Antigravity Context Window & Memory Vault
+# Context Brain for Antigravity
 
 A **Live Context Window Monitor** and **Portable Markdown Memory Vault** (MCP App plugin) for Google Antigravity.
 
 - **Zero extra cost (0 tokens / 0 external APIs):** All token telemetry, charts, smart search, and UI localization run 100% locally.
 - **Side Pane + Sidebar + Inline:** Openable anywhere inside Antigravity.
-- **Bilingual UI (EN / TR):** English by default, with one-click Turkish (`TR`) switching — including bilingual vault guides (`AGENTS.md` / `AGENTS.tr.md`).
+- **Bilingual UI (EN / TR):** English by default, with persistent one-click Turkish (`TR`) switching — including bilingual vault guides (`AGENTS.md` / `AGENTS.tr.md`).
 
 ---
 
@@ -34,23 +34,23 @@ All notes are stored as plain `.md` files in `~/Antigravity-Brain` (automaticall
 
 ### Windows (PowerShell)
 ```powershell
-git clone https://github.com/Welpon/antigravity-context-window.git "$env:USERPROFILE\.gemini\config\plugins\context-window"
-cd "$env:USERPROFILE\.gemini\config\plugins\context-window"
+git clone https://github.com/Welpon/antigravity-context-brain.git "$env:USERPROFILE\.gemini\config\plugins\context-brain"
+cd "$env:USERPROFILE\.gemini\config\plugins\context-brain"
 npm install
 ```
 
 ### macOS / Linux
 ```bash
-git clone https://github.com/Welpon/antigravity-context-window.git ~/.gemini/config/plugins/context-window
-cd ~/.gemini/config/plugins/context-window && npm install
+git clone https://github.com/Welpon/antigravity-context-brain.git ~/.gemini/config/plugins/context-brain
+cd ~/.gemini/config/plugins/context-brain && npm install
 ```
 
 ### Without Git (ZIP Download)
 1. Click **Code → Download ZIP** on GitHub.
-2. Extract into `~/.gemini/config/plugins/context-window`.
+2. Extract into `~/.gemini/config/plugins/context-brain`.
 3. Open a terminal in that folder and run `npm install`.
 
-Antigravity discovers the plugin automatically. Open it from the **Side Pane (`+` → Context Window)** or **Sidebar (Plugins → Context Window)**.
+Antigravity discovers the plugin automatically. Open it from the **Side Pane (`+` → Context Brain)** or **Sidebar (Plugins → Context Brain)**.
 
 ### Custom Vault Location (Optional)
 On first launch, the plugin automatically creates `~/Antigravity-Brain` (`sessions/`, `tasks/`, `decisions/`, `inbox/`, `AGENTS.md`, `AGENTS.tr.md`). Set the `ANTIGRAVITY_VAULT_DIR` environment variable to use a custom directory.

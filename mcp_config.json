@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "context-window": {
+    "context-brain": {
       "command": "node",
       "args": [
         "${PLUGIN_ROOT}/server/index.mjs",

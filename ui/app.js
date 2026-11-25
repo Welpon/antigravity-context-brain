@@ -532,7 +532,7 @@ function humanizePreview(preview) {
   return cap100(str);
 }
 
-const app = new App({ name: 'Context Window', version: '1.2.0' }, {});
+const app = new App({ name: 'Context Brain', version: '1.0.0' }, {});
 
 function fmt(n) {
   return Number(n || 0).toLocaleString(state.lang === 'tr' ? 'tr-TR' : 'en-US');

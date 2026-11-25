@@ -1,11 +1,11 @@
 {
-  "name": "context-window",
-  "displayName": "Context Window",
+  "name": "context-brain",
+  "displayName": "Context Brain",
   "version": "1.0.0",
   "description": "Live context window & token monitor + portable Markdown memory vault (sessions, tasks, decisions, inbox, and multi-file context packs) for Antigravity. Supports English and Turkish.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
-    "Open the Context Window panel in the side pane",
+    "Open the Context Brain panel in the side pane",
     "Show the current conversation's context usage, cache hit rate, and top spikes",
     "Save this session's outcome and next step to my memory vault"
   ]

@@ -17,7 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PLUGIN_ROOT = path.resolve(__dirname, '..');
 
-const APP_URI = 'ui://context-window/app.html';
+const APP_URI = 'ui://context-brain/app.html';
 const APP_MIME = 'text/html;profile=mcp-app';
 
 function parseDataDir(argv) {
@@ -89,24 +89,24 @@ function buildUsageSummaryText(analysis) {
 const TOOLS = [
   {
     name: 'open_context_window',
-    title: 'Context Window',
+    title: 'Context Brain',
     description:
-      'Antigravity Context Window İzleyici ve Bağlam Paketi Yöneticisi arayüzünü açar. Mevcut konuşmanın gerçek token kullanımını, kategori dağılımını, en ağır adımları ve kayıtlı bağlam paketlerini gösterir.',
+      'Open the Context Brain Monitor & Memory Vault UI. Shows real token usage, cache hit rate, top spikes, heaviest steps, and your portable Markdown memory vault.',
     inputSchema: {
       type: 'object',
       properties: {
         conversation_id: {
           type: 'string',
-          description: 'İsteğe bağlı. İncelenecek konuşma ID\'si. Boş bırakılırsa en son aktif konuşma seçilir.',
+          description: 'Optional conversation ID. Defaults to the most recent active conversation.',
         },
         tab: {
           type: 'string',
           enum: ['monitor', 'packs', 'memory'],
-          description: 'İsteğe bağlı. Başlangıç sekmesi: "monitor" (izleyici), "packs" (paketler) veya "memory" (hafıza).',
+          description: 'Optional initial tab: "monitor" or "memory".',
         },
         context_limit: {
           type: 'number',
-          description: 'İsteğe bağlı. Özel context window üst limiti (token).',
+          description: 'Optional custom context window token limit.',
         },
       },
     },
@@ -116,8 +116,8 @@ const TOOLS = [
       },
       'com.google.antigravity/ui': {
         entrypoints: [
-          { type: 'aux_pane', title: 'Context Window' },
-          { type: 'global', title: 'Context Window' },
+          { type: 'aux_pane', title: 'Context Brain' },
+          { type: 'global', title: 'Context Brain' },
         ],
       },
     },
@@ -400,7 +400,7 @@ const TOOLS = [
 
 const server = new Server(
   {
-    name: 'context-window',
+    name: 'context-brain',
     version: '1.0.0',
   },
   {
@@ -415,8 +415,8 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => ({
   resources: [
     {
       uri: APP_URI,
-      name: 'Context Window App',
-      description: 'Interactive Context Window Monitor and Context Pack Manager UI',
+      name: 'Context Brain App',
+      description: 'Interactive Context Brain Monitor and Memory Vault UI',
       mimeType: APP_MIME,
       _meta: {
         ui: {

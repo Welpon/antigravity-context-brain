@@ -1,9 +1,9 @@
 {
-  "name": "antigravity-context-window-plugin",
+  "name": "antigravity-context-brain",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Context Window Monitor & Context Pack Manager MCP App plugin for Antigravity",
+  "description": "Context Brain — Live Context Window Monitor & Portable Memory Vault MCP App plugin for Antigravity",
   "scripts": {
     "build:ui": "node ui/build.mjs",
     "start": "node server/index.mjs"

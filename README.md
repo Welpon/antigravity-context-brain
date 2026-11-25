@@ -26,6 +26,15 @@ All notes are stored as plain `.md` files in `~/Antigravity-Brain` (automaticall
 - **📦 Add Pack:** Bundle multiple local project files + reusable rules and attach their live contents to chat in one click (`📎 Attach Context` / `↗ Send`).
 - **🔍 Smart Search & Open File:** Strips English/Turkish question filler words, ranks matches by relevance, and opens `.md` files directly in Antigravity's side pane.
 
+### 3. Local Web App (Kanban Board & Cockpit)
+Launch a full-screen local web dashboard (`127.0.0.1`, auto-closes after 30 min idle) with one click from the **`🌐 Web`** button inside Context Brain, or from your terminal even when Antigravity is closed:
+```bash
+npm run web
+```
+- **5-Column Kanban Board:** `INBOX` · `ACTIVE` · `WAITING` · `DONE` · `CANCELLED` (`GELEN` · `AKTİF` · `BEKLİYOR` · `BİTTİ` · `İPTAL`) with drag-and-drop and dropdown status switching.
+- **Project / Conversation Filter:** Filter and create tasks per project or Antigravity conversation.
+- **Cockpit, Memory & Smart Search:** View live token usage, browse Markdown notes, and search across your entire vault from the browser.
+
 ---
 
 ## Installation

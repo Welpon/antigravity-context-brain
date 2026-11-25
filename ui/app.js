@@ -15,6 +15,8 @@ const I18N = {
     refreshTitle: 'Yenile',
     refreshPacksTitle: 'Paketleri Yenile',
     langTitle: 'Dili değiştir (TR / EN)',
+    webBtnTitle: 'Yerel Web Kanban Panosunu tarayıcıda aç',
+    toastWebReady: (u) => `Web arayüzü hazır: ${u}`,
     selectConvTitle: 'Konuşma Seç',
     selectLimitTitle: 'Bağlam Limiti',
     loadingConv: 'Konuşma verisi yükleniyor...',
@@ -170,6 +172,8 @@ const I18N = {
     refreshTitle: 'Refresh',
     refreshPacksTitle: 'Refresh Packs',
     langTitle: 'Switch language (TR / EN)',
+    webBtnTitle: 'Open local Web Kanban Board in browser',
+    toastWebReady: (u) => `Web UI ready: ${u}`,
     selectConvTitle: 'Select Conversation',
     selectLimitTitle: 'Context Limit',
     loadingConv: 'Loading conversation data...',
@@ -1811,6 +1815,7 @@ function render() {
           <button id="tabMemory" class="tab-btn ${state.activeTab === 'memory' ? 'active' : ''}">${esc(t('tabMemory'))} (${memoryCount})</button>
         </div>
         <div class="header-controls">
+          <button id="btnOpenWeb" class="lang-btn" title="${esc(t('webBtnTitle'))}">🌐 Web</button>
           <button id="btnLang" class="lang-btn" title="${esc(t('langTitle'))}">${state.lang.toUpperCase()}</button>
           ${
             state.activeTab === 'monitor'
@@ -1917,6 +1922,19 @@ function bindEvents() {
   });
 
   document.getElementById('btnLang')?.addEventListener('click', () => toggleLanguage());
+  document.getElementById('btnOpenWeb')?.addEventListener('click', async () => {
+    try {
+      const res = await callTool('open_web_ui', {});
+      if (res?.url) {
+        if (state.capabilities?.openLinks) {
+          await app.openLink({ url: res.url });
+        }
+        showToast(t('toastWebReady', res.url));
+      }
+    } catch (err) {
+      showToast(err.message);
+    }
+  });
 
   document.getElementById('convSelect')?.addEventListener('change', (e) => {
     state.selectedConvId = e.target.value;

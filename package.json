@@ -6,7 +6,8 @@
   "description": "Context Brain — Live Context Window Monitor & Portable Memory Vault MCP App plugin for Antigravity",
   "scripts": {
     "build:ui": "node ui/build.mjs",
-    "start": "node server/index.mjs"
+    "start": "node server/index.mjs",
+    "web": "node server/web.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",

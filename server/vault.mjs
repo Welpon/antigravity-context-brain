@@ -5,6 +5,19 @@ import { estimateTokens } from './transcript.mjs';
 
 export const DEFAULT_VAULT_DIR = path.join(os.homedir(), 'Antigravity-Brain');
 
+export const TASK_STATUSES = ['inbox', 'active', 'waiting', 'done', 'cancelled'];
+
+function normalizeTaskStatus(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  if (s === 'open' || s === 'gelen') return 'inbox';
+  if (s === 'aktif') return 'active';
+  if (s === 'bekliyor') return 'waiting';
+  if (s === 'bitti') return 'done';
+  if (s === 'iptal' || s === 'canceled') return 'cancelled';
+  if (TASK_STATUSES.includes(s)) return s;
+  return 'inbox';
+}
+
 const SUBDIRS = {
   handoff: 'sessions',
   decision: 'decisions',
@@ -239,8 +252,9 @@ export class MemoryVault {
       relativePath: path.relative(this.vaultDir, filePath).replace(/\\/g, '/'),
       name: path.basename(filePath),
       kind,
-      status: meta.status || (kind === 'task' ? 'open' : ''),
+      status: kind === 'task' ? normalizeTaskStatus(meta.status) : (meta.status || ''),
       priority: meta.priority || '',
+      project: meta.project || '',
       sourceType: meta.source_type || '',
       sourceUrl: meta.source_url || '',
       title,
@@ -383,7 +397,7 @@ export class MemoryVault {
     return this._readItem(filePath);
   }
 
-  saveTask({ title, notes = '', priority = 'normal', status = 'open', tags = [], lang = 'en' }) {
+  saveTask({ title, notes = '', priority = 'normal', status = 'inbox', project = '', tags = [], lang = 'en' }) {
     this.ensureStructure();
     const isTr = lang === 'tr';
     const cleanTitle = String(title || '').trim();
@@ -391,13 +405,15 @@ export class MemoryVault {
     const filename = `${dateStamp()}-${timeStamp()}-${slugify(cleanTitle)}.md`;
     const filePath = path.join(this.vaultDir, SUBDIRS.task, filename);
     const tagStr = Array.isArray(tags) ? tags.join(', ') : String(tags || '');
-    const cleanStatus = status === 'done' ? 'done' : 'open';
+    const cleanStatus = normalizeTaskStatus(status);
+    const cleanProject = String(project || '').trim();
 
     const content = [
       '---',
       `type: task`,
       `status: "${cleanStatus}"`,
       `priority: "${String(priority || 'normal').trim()}"`,
+      ...(cleanProject ? [`project: "${cleanProject.replace(/"/g, '\\"')}"`] : []),
       `title: "${cleanTitle.replace(/"/g, '\\"')}"`,
       `created_at: "${new Date().toISOString()}"`,
       ...(tagStr ? [`tags: "${tagStr}"`] : []),
@@ -414,27 +430,38 @@ export class MemoryVault {
     return this._readItem(filePath);
   }
 
-  toggleTask(filePath) {
+  updateTaskStatus(filePath, nextStatusRaw) {
     const resolved = path.resolve(String(filePath || ''));
     const vaultResolved = path.resolve(this.vaultDir);
     if (!resolved.startsWith(vaultResolved) || !fs.existsSync(resolved)) {
       throw new Error('Task file not found.');
     }
+    const nextStatus = normalizeTaskStatus(nextStatusRaw);
     let raw = fs.readFileSync(resolved, 'utf8');
-    const isCurrentlyDone = /^status:\s*["']?done["']?/m.test(raw);
-    const nextStatus = isCurrentlyDone ? 'open' : 'done';
 
     if (/^status:\s*.+$/m.test(raw)) {
       raw = raw.replace(/^status:\s*.+$/m, `status: "${nextStatus}"`);
     } else {
       raw = raw.replace(/^---\r?\n/, `---\nstatus: "${nextStatus}"\n`);
     }
-    raw = isCurrentlyDone
-      ? raw.replace(/- \[x\] /i, '- [ ] ')
-      : raw.replace(/- \[ \] /, '- [x] ');
+    raw =
+      nextStatus === 'done'
+        ? raw.replace(/- \[ \] /, '- [x] ')
+        : raw.replace(/- \[x\] /i, '- [ ] ');
 
     fs.writeFileSync(resolved, raw, 'utf8');
     return this._readItem(resolved);
+  }
+
+  toggleTask(filePath) {
+    const resolved = path.resolve(String(filePath || ''));
+    const vaultResolved = path.resolve(this.vaultDir);
+    if (!resolved.startsWith(vaultResolved) || !fs.existsSync(resolved)) {
+      throw new Error('Task file not found.');
+    }
+    const raw = fs.readFileSync(resolved, 'utf8');
+    const isCurrentlyDone = /^status:\s*["']?done["']?/m.test(raw);
+    return this.updateTaskStatus(resolved, isCurrentlyDone ? 'inbox' : 'done');
   }
 
   search(query, limit = 20) {

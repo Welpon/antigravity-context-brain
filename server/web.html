@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Context Brain Web</title>
+  <style>
+    :root {
+      --bg: #0c0e13;
+      --sidebar: #11141c;
+      --card: #171b26;
+      --card-2: #1d2230;
+      --border: rgba(148, 163, 184, 0.16);
+      --border-2: rgba(148, 163, 184, 0.28);
+      --fg: #f1f5f9;
+      --fg-2: #94a3b8;
+      --fg-3: #64748b;
+      --accent: #4f8cff;
+      --accent-hover: #3b78f0;
+      --ok: #22c55e;
+      --warn: #eab308;
+      --danger: #ef4444;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      background: var(--bg); color: var(--fg);
+      font-family: var(--sans); font-size: 13px; line-height: 1.45;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+    .sidebar {
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      padding: 4px 6px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand-logo {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, #3b82f6, #10b981);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; color: #fff; font-size: 12px; flex-shrink: 0;
+    }
+    .brand-name { font-weight: 700; font-size: 14px; }
+    .brand-sub { font-size: 11px; color: var(--fg-3); font-family: var(--mono); }
+    .nav { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+    .nav-btn {
+      display: flex; align-items: center; justify-content: space-between;
+      border: 1px solid transparent; background: transparent; color: var(--fg-2);
+      padding: 8px 10px; border-radius: 7px; font-size: 13px; font-weight: 600;
+      cursor: pointer; text-align: left; font-family: inherit;
+    }
+    .nav-btn:hover { background: var(--card); color: var(--fg); }
+    .nav-btn.active {
+      background: var(--card-2); color: var(--fg);
+      border-color: var(--border);
+    }
+    .nav-count {
+      font-family: var(--mono); font-size: 11px; color: var(--fg-3);
+    }
+    .side-footer {
+      display: flex; flex-direction: column; gap: 7px;
+      border-top: 1px solid var(--border); padding-top: 12px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border: 1px solid var(--border); background: var(--card); color: var(--fg);
+      padding: 7px 11px; border-radius: 7px; font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit; white-space: nowrap;
+    }
+    .btn:hover { background: var(--card-2); border-color: var(--border-2); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn-warn { background: #a18824; border-color: #b59a2e; color: #fff; }
+    .btn-warn:hover { filter: brightness(1.08); }
+    .btn-danger { background: rgba(239, 68, 68, 0.14); color: #f87171; border-color: transparent; }
+    .btn-sm { padding: 4px 8px; font-size: 11.5px; }
+    .idle-note { font-size: 10.5px; color: var(--fg-3); text-align: center; }
+
+    .main {
+      padding: 20px 24px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .page-head {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .page-title { font-size: 20px; font-weight: 700; margin: 0; }
+    .page-sub { font-size: 12px; color: var(--fg-2); margin-top: 3px; }
+    .toolbar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .input, .select, .textarea {
+      background: var(--card); color: var(--fg);
+      border: 1px solid var(--border); border-radius: 7px;
+      padding: 7px 10px; font-family: inherit; font-size: 12.5px; outline: none;
+    }
+    .input:focus, .select:focus, .textarea:focus { border-color: var(--accent); }
+    .select option { background: var(--card); color: var(--fg); }
+
+    /* 5-Column Kanban */
+    .kanban {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(190px, 1fr));
+      gap: 12px;
+      overflow-x: auto;
+      align-items: start;
+      padding-bottom: 12px;
+    }
+    .col {
+      background: var(--sidebar);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 360px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .col.drag-over {
+      border-color: var(--accent);
+      background: rgba(79, 140, 255, 0.08);
+    }
+    .col-head {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+      color: var(--fg-2); padding: 2px 4px 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .col-count { font-family: var(--mono); color: var(--fg-3); }
+    .task-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      cursor: grab;
+    }
+    .task-card:active { cursor: grabbing; }
+    .task-card:hover { border-color: var(--border-2); }
+    .task-title {
+      font-weight: 700; font-size: 13px; color: var(--fg);
+      cursor: pointer;
+    }
+    .task-title:hover { color: var(--accent); }
+    .task-title.done { text-decoration: line-through; opacity: 0.65; }
+    .task-meta {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      font-size: 11px; color: var(--fg-3); font-family: var(--mono);
+    }
+    .proj-chip {
+      display: inline-block; max-width: 140px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      color: var(--fg-2);
+    }
+    .prio-high { color: #f87171; font-weight: 700; }
+    .prio-low { color: var(--fg-3); }
+    .card-row {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .status-select {
+      flex: 1; background: var(--bg); color: var(--fg);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 4px 6px; font-size: 11.5px; cursor: pointer;
+    }
+    .del-icon {
+      border: none; background: transparent; color: var(--fg-3);
+      cursor: pointer; padding: 3px 5px; border-radius: 5px; font-size: 12px;
+    }
+    .del-icon:hover { background: rgba(239, 68, 68, 0.16); color: #f87171; }
+
+    /* Cards & Grids */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+    .kpi-val { font-size: 22px; font-weight: 700; font-family: var(--mono); }
+    .kpi-label { font-size: 11.5px; color: var(--fg-3); }
+    .dual-track {
+      width: 100%; height: 9px; background: var(--card-2);
+      border-radius: 999px; overflow: hidden; display: flex;
+    }
+    .dual-cache { background: var(--accent); height: 100%; }
+    .dual-uncached { background: var(--ok); height: 100%; }
+    .note-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px;
+    }
+    .badge {
+      display: inline-flex; padding: 2px 7px; border-radius: 5px;
+      font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+      background: rgba(79, 140, 255, 0.16); color: #60a5fa;
+    }
+    .badge-handoff { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+    .badge-decision { background: rgba(79, 140, 255, 0.16); color: #60a5fa; }
+    .badge-task { background: rgba(168, 85, 247, 0.16); color: #c084fc; }
+    .badge-inbox { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+    .spike-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px; border-radius: 7px; background: var(--sidebar);
+      font-family: var(--mono); font-size: 12px;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; z-index: 200;
+    }
+    .modal {
+      background: var(--card); border: 1px solid var(--border-2);
+      border-radius: 12px; max-width: 720px; width: 100%;
+      max-height: 82vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+    }
+    .modal-body {
+      padding: 16px; overflow: auto;
+      white-space: pre-wrap; font-family: var(--mono); font-size: 12px;
+      color: var(--fg-2); line-height: 1.55;
+    }
+    .toast {
+      position: fixed; bottom: 16px; right: 16px;
+      background: var(--fg); color: var(--bg);
+      padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 300;
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script>
+    const I18N = {
+      en: {
+        navTasks: 'Tasks',
+        navCockpit: 'Cockpit',
+        navMemory: 'Memory',
+        navSearch: 'Search',
+        sync: 'Sync',
+        stopServer: 'Stop Server',
+        idleNote: 'Auto-closes after 30 min idle',
+        tasksTitle: 'Tasks',
+        tasksSub: 'Tasks in ~/Antigravity-Brain/tasks/ — drag cards or change status.',
+        projectLbl: 'Project / Chat',
+        allProjects: 'All projects & chats',
+        newTaskPh: 'New task title...',
+        projectPh: 'Project name (optional)',
+        addBtn: '+ Add',
+        cols: {
+          inbox: 'INBOX',
+          active: 'ACTIVE',
+          waiting: 'WAITING',
+          done: 'DONE',
+          cancelled: 'CANCELLED',
+        },
+        prio: { high: 'High', normal: 'Normal', low: 'Low' },
+        cockpitTitle: 'Context Cockpit',
+        cockpitSub: 'Live token telemetry from your Antigravity conversations.',
+        cache: 'Cache',
+        uncached: 'Uncached',
+        free: 'Free',
+        cacheHit: 'Cache Hit',
+        output: 'Output',
+        turns: 'Turns',
+        topSpikes: 'Top Spikes',
+        memoryTitle: 'Memory Vault',
+        memorySub: 'Sessions, decisions, inbox captures, and tasks stored as Markdown.',
+        searchTitle: 'Smart Search',
+        searchSub: 'Search across all Markdown notes with English/Turkish filler stripping.',
+        searchPh: 'Ask naturally (e.g. which database did we pick)...',
+        searchBtn: 'Search',
+        noItems: 'No items found.',
+        stoppedTitle: 'Context Brain Web stopped',
+        stoppedSub: 'You can close this tab or restart with npm run web.',
+        toastSaved: 'Saved!',
+        toastSynced: 'Synced.',
+        toastDeleted: 'Deleted.',
+      },
+      tr: {
+        navTasks: 'Görevler',
+        navCockpit: 'Kokpit',
+        navMemory: 'Hafıza',
+        navSearch: 'Arama',
+        sync: 'Eşitle',
+        stopServer: 'Sunucuyu Kapat',
+        idleNote: '30 dk kullanılmazsa kapanır',
+        tasksTitle: 'Görevler',
+        tasksSub: '~/Antigravity-Brain/tasks/ altındaki görevler — sürükle-bırak veya durum seç.',
+        projectLbl: 'Proje / Sohbet',
+        allProjects: 'Tüm projeler ve sohbetler',
+        newTaskPh: 'Yeni görev başlığı...',
+        projectPh: 'Proje / sohbet adı (isteğe bağlı)',
+        addBtn: '+ Ekle',
+        cols: {
+          inbox: 'GELEN',
+          active: 'AKTİF',
+          waiting: 'BEKLİYOR',
+          done: 'BİTTİ',
+          cancelled: 'İPTAL',
+        },
+        prio: { high: 'Yüksek', normal: 'Normal', low: 'Düşük' },
+        cockpitTitle: 'Bağlam Kokpiti',
+        cockpitSub: 'Antigravity konuşmalarının canlı token ve önbellek telemetrisi.',
+        cache: 'Önbellek',
+        uncached: 'Önbelleksiz',
+        free: 'Boş',
+        cacheHit: 'Önbellek İsabeti',
+        output: 'Çıktı',
+        turns: 'Tur',
+        topSpikes: 'En Büyük Sıçramalar',
+        memoryTitle: 'Hafıza Kasası',
+        memorySub: 'Oturumlar, kararlar, yakalananlar ve görevler düz Markdown olarak saklanır.',
+        searchTitle: 'Akıllı Arama',
+        searchSub: 'Tüm Markdown notlarında Türkçe/İngilizce soru kalıplarını ayıklayarak arar.',
+        searchPh: 'Doğal dille ara (örn: projede hangi dili seçtik)...',
+        searchBtn: 'Ara',
+        noItems: 'Kayıt bulunamadı.',
+        stoppedTitle: 'Context Brain Web kapatıldı',
+        stoppedSub: 'Bu sekmeyi kapatabilir veya npm run web ile yeniden başlatabilirsin.',
+        toastSaved: 'Kaydedildi!',
+        toastSynced: 'Eşitlendi.',
+        toastDeleted: 'Silindi.',
+      },
+    };
+
+    const COL_ORDER = ['inbox', 'active', 'waiting', 'done', 'cancelled'];
+
+    const state = {
+      lang: 'en',
+      view: 'tasks',
+      data: null,
+      selectedProject: '__all__',
+      selectedConvId: '',
+      searchQuery: '',
+      searchResults: null,
+      dragTaskPath: null,
+      stopped: false,
+    };
+
+    function t(key) {
+      return (I18N[state.lang] || I18N.en)[key] ?? key;
+    }
+
+    function esc(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function fmtCompact(n) {
+      const num = Number(n || 0);
+      const uM = state.lang === 'tr' ? 'Mn' : 'M';
+      const uK = state.lang === 'tr' ? 'B' : 'K';
+      if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}${uM}`;
+      if (num >= 100_000) return `${Math.round(num / 1_000)}${uK}`;
+      if (num >= 1_000) return `${(num / 1_000).toFixed(1)}${uK}`;
+      return String(Math.round(num));
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.add('hidden'), 2500);
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opts,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Request failed');
+      return json;
+    }
+
+    async function loadState(silent = true) {
+      const qs = state.selectedConvId ? `?conv=${encodeURIComponent(state.selectedConvId)}` : '';
+      const d = await api(`/api/state${qs}`);
+      state.data = d;
+      if (d.prefs?.lang) {
+        state.lang = d.prefs.lang;
+        document.documentElement.lang = state.lang;
+      }
+      if (!state.selectedConvId && d.analysis?.conversationId) {
+        state.selectedConvId = d.analysis.conversationId;
+      }
+      if (!silent) showToast(t('toastSynced'));
+      render();
+    }
+
+    async function openNoteModal(filePath) {
+      try {
+        const note = await api(`/api/note?path=${encodeURIComponent(filePath)}`);
+        document.getElementById('modalRoot').innerHTML = `
+          <div id="modalBackdrop" class="modal-backdrop">
+            <div class="modal">
+              <div class="modal-head">
+                <strong>${esc(note.title)} <span style="color:var(--fg-3);font-family:var(--mono);font-size:11px;">(${esc(note.relativePath)})</span></strong>
+                <button id="btnCloseModal" class="btn btn-sm">✕</button>
+              </div>
+              <div class="modal-body">${esc(note.content)}</div>
+            </div>
+          </div>
+        `;
+        document.getElementById('btnCloseModal').onclick = () => {
+          document.getElementById('modalRoot').innerHTML = '';
+        };
+        document.getElementById('modalBackdrop').onclick = (e) => {
+          if (e.target.id === 'modalBackdrop') document.getElementById('modalRoot').innerHTML = '';
+        };
+      } catch (err) {
+        showToast(err.message);
+      }
+    }
+
+    function renderTasksView() {
+      const items = (state.data?.vault?.items || []).filter((i) => i.kind === 'task');
+      const projects = state.data?.projects || [];
+      const filtered =
+        state.selectedProject === '__all__'
+          ? items
+          : items.filter((i) => (i.project || '') === state.selectedProject);
+
+      const projOptions = projects
+        .map((p) => `<option value="${esc(p.id)}" ${p.id === state.selectedProject ? 'selected' : ''}>${esc(p.label)}</option>`)
+        .join('');
+
+      const colsHtml = COL_ORDER.map((colId) => {
+        const colTasks = filtered.filter((item) => (item.status || 'inbox') === colId);
+        const cardsHtml = colTasks
+          .map((item) => {
+            const statusOpts = COL_ORDER.map(
+              (c) => `<option value="${c}" ${c === colId ? 'selected' : ''}>${esc(t('cols')[c])}</option>`
+            ).join('');
+            const prioClass = item.priority === 'high' ? 'prio-high' : item.priority === 'low' ? 'prio-low' : '';
+            const prioText = t('prio')[item.priority] || t('prio').normal;
+            return `
+              <div class="task-card" draggable="true" data-drag-path="${esc(item.path)}">
+                <div class="task-title ${colId === 'done' || colId === 'cancelled' ? 'done' : ''}" data-open-note="${esc(item.path)}">${esc(item.title)}</div>
+                <div class="task-meta">
+                  <span class="proj-chip" title="${esc(item.project || '-')}">${item.project ? `#${esc(item.project)}` : '#general'}</span>
+                  <span class="${prioClass}">${esc(prioText)}</span>
+                </div>
+                <div class="card-row">
+                  <select class="status-select" data-status-path="${esc(item.path)}">${statusOpts}</select>
+                  <button class="del-icon" title="Delete" data-del-path="${esc(item.path)}">🗑</button>
+                </div>
+              </div>
+            `;
+          })
+          .join('');
+
+        return `
+          <div class="col" data-drop-col="${colId}">
+            <div class="col-head">
+              <span>${esc(t('cols')[colId])}</span>
+              <span class="col-count">${colTasks.length}</span>
+            </div>
+            ${cardsHtml}
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="page-head">
+          <div>
+            <h1 class="page-title">${esc(t('tasksTitle'))}</h1>
+            <div class="page-sub">${esc(t('tasksSub'))}</div>
+          </div>
+          <div class="toolbar">
+            <label style="font-size:12px;color:var(--fg-2);">${esc(t('projectLbl'))}:</label>
+            <select id="projectSelect" class="select">
+              <option value="__all__" ${state.selectedProject === '__all__' ? 'selected' : ''}>${esc(t('allProjects'))}</option>
+              ${projOptions}
+            </select>
+          </div>
+        </div>
+
+        <form id="quickTaskForm" class="toolbar">
+          <input id="qtTitle" class="input" style="flex:2;min-width:180px;" required placeholder="${esc(t('newTaskPh'))}" />
+          <input id="qtProject" class="input" list="projDatalist" style="flex:1;min-width:150px;" placeholder="${esc(t('projectPh'))}" value="${state.selectedProject !== '__all__' ? esc(state.selectedProject) : ''}" />
+          <datalist id="projDatalist">
+            ${projects.map((p) => `<option value="${esc(p.label)}"></option>`).join('')}
+          </datalist>
+          <select id="qtPrio" class="select">
+            <option value="normal">${esc(t('prio').normal)}</option>
+            <option value="high">${esc(t('prio').high)}</option>
+            <option value="low">${esc(t('prio').low)}</option>
+          </select>
+          <select id="qtStatus" class="select">
+            ${COL_ORDER.map((c) => `<option value="${c}">${esc(t('cols')[c])}</option>`).join('')}
+          </select>
+          <button type="submit" class="btn btn-primary">${esc(t('addBtn'))}</button>
+        </form>
+
+        <div class="kanban">${colsHtml}</div>
+      `;
+    }
+
+    function renderCockpitView() {
+      const a = state.data?.analysis;
+      const convs = state.data?.conversations || [];
+      const convOpts = convs
+        .map((c) => `<option value="${esc(c.id)}" ${c.id === state.selectedConvId ? 'selected' : ''}>${esc(c.title)} (${fmtCompact(c.latestContextTokens)})</option>`)
+        .join('');
+
+      if (!a || !a.found) {
+        return `<div class="card">${esc(t('noItems'))}</div>`;
+      }
+
+      const cachePct = a.contextLimit > 0 ? Math.min(100, (a.latestCacheReadTokens / a.contextLimit) * 100) : 0;
+      const uncachedPct = a.contextLimit > 0 ? Math.min(100 - cachePct, (a.latestInputTokens / a.contextLimit) * 100) : 0;
+
+      const spikesHtml = (a.topSpikes || [])
+        .map(
+          (s) => `
+          <div class="spike-row">
+            <span>#${s.stepIndex} · ${esc(s.label)}</span>
+            <strong>+${fmtCompact(s.deltaTokens)}</strong>
+          </div>
+        `
+        )
+        .join('');
+
+      return `
+        <div class="page-head">
+          <div>
+            <h1 class="page-title">${esc(t('cockpitTitle'))}</h1>
+            <div class="page-sub">${esc(t('cockpitSub'))}</div>
+          </div>
+          <select id="convSelect" class="select" style="max-width:340px;">${convOpts}</select>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <div style="font-size:28px;font-weight:800;">${a.utilizationPct}%</div>
+            <div style="font-family:var(--mono);color:var(--fg-2);">${fmtCompact(a.latestContextTokens)} / ${fmtCompact(a.contextLimit)} · ${esc(a.model)}</div>
+          </div>
+          <div class="dual-track">
+            <div class="dual-cache" style="width:${cachePct.toFixed(2)}%"></div>
+            <div class="dual-uncached" style="width:${uncachedPct.toFixed(2)}%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--fg-2);font-family:var(--mono);">
+            <span>${esc(t('cache'))}: ${fmtCompact(a.latestCacheReadTokens)} · ${esc(t('uncached'))}: ${fmtCompact(a.latestInputTokens)}</span>
+            <span>${esc(t('free'))}: ${fmtCompact(a.remainingTokens)}</span>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="card"><div class="kpi-label">${esc(t('cacheHit'))}</div><div class="kpi-val">${a.latestCacheHitPct}%</div></div>
+          <div class="card"><div class="kpi-label">${esc(t('output'))}</div><div class="kpi-val">${fmtCompact(a.cumulative?.outputTokens)}</div></div>
+          <div class="card"><div class="kpi-label">${esc(t('turns'))}</div><div class="kpi-val">${a.turns}</div></div>
+        </div>
+
+        <div class="card">
+          <strong>${esc(t('topSpikes'))}</strong>
+          ${spikesHtml || `<div style="color:var(--fg-3);">${esc(t('noItems'))}</div>`}
+        </div>
+      `;
+    }
+
+    function renderMemoryView() {
+      const items = state.data?.vault?.items || [];
+      const cards = items
+        .map(
+          (i) => `
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+              <span class="badge badge-${esc(i.kind)}">${esc(i.kind)}</span>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">~${fmtCompact(i.tokens)}</span>
+            </div>
+            <div class="task-title" data-open-note="${esc(i.path)}">${esc(i.title)}</div>
+            <div style="font-size:12px;color:var(--fg-2);">${esc(i.preview || '')}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--fg-3);font-family:var(--mono);">
+              <span>${esc(i.relativePath)}</span>
+              <button class="del-icon" data-del-path="${esc(i.path)}">🗑</button>
+            </div>
+          </div>
+        `
+        )
+        .join('');
+
+      return `
+        <div class="page-head">
+          <div>
+            <h1 class="page-title">${esc(t('memoryTitle'))}</h1>
+            <div class="page-sub">${esc(t('memorySub'))}</div>
+          </div>
+        </div>
+        <div class="note-grid">${cards || `<div class="card">${esc(t('noItems'))}</div>`}</div>
+      `;
+    }
+
+    function renderSearchView() {
+      const items = state.searchResults ?? (state.data?.vault?.items || []);
+      const cards = items
+        .map(
+          (i) => `
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="badge badge-${esc(i.kind)}">${esc(i.kind)}</span>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--fg-3);">${esc(i.relativePath)}</span>
+            </div>
+            <div class="task-title" data-open-note="${esc(i.path)}">${esc(i.title)}</div>
+            <div style="font-size:12px;color:var(--fg-2);">${esc(i.snippet || i.preview || '')}</div>
+          </div>
+        `
+        )
+        .join('');
+
+      return `
+        <div class="page-head">
+          <div>
+            <h1 class="page-title">${esc(t('searchTitle'))}</h1>
+            <div class="page-sub">${esc(t('searchSub'))}</div>
+          </div>
+        </div>
+        <form id="searchForm" class="toolbar">
+          <input id="searchInput" class="input" style="flex:1;" placeholder="${esc(t('searchPh'))}" value="${esc(state.searchQuery)}" />
+          <button type="submit" class="btn btn-primary">${esc(t('searchBtn'))}</button>
+        </form>
+        <div class="note-grid">${cards || `<div class="card">${esc(t('noItems'))}</div>`}</div>
+      `;
+    }
+
+    function render() {
+      const root = document.getElementById('app');
+      if (state.stopped) {
+        root.innerHTML = `<div style="max-width:460px;margin:18vh auto;text-align:center;" class="card"><h2>${esc(t('stoppedTitle'))}</h2><p style="color:var(--fg-2);">${esc(t('stoppedSub'))}</p></div>`;
+        return;
+      }
+
+      const counts = state.data?.vault?.counts || { all: 0, task: 0 };
+
+      root.innerHTML = `
+        <div class="layout">
+          <aside class="sidebar">
+            <div>
+              <div class="brand">
+                <div class="brand-logo">CB</div>
+                <div>
+                  <div class="brand-name">Context Brain</div>
+                  <div class="brand-sub">Web · v1.0.0</div>
+                </div>
+              </div>
+              <nav class="nav">
+                <button class="nav-btn ${state.view === 'tasks' ? 'active' : ''}" data-nav="tasks">
+                  <span>📋 ${esc(t('navTasks'))}</span><span class="nav-count">${counts.task || 0}</span>
+                </button>
+                <button class="nav-btn ${state.view === 'cockpit' ? 'active' : ''}" data-nav="cockpit">
+                  <span>📊 ${esc(t('navCockpit'))}</span>
+                </button>
+                <button class="nav-btn ${state.view === 'memory' ? 'active' : ''}" data-nav="memory">
+                  <span>🧠 ${esc(t('navMemory'))}</span><span class="nav-count">${counts.all || 0}</span>
+                </button>
+                <button class="nav-btn ${state.view === 'search' ? 'active' : ''}" data-nav="search">
+                  <span>🔍 ${esc(t('navSearch'))}</span>
+                </button>
+              </nav>
+            </div>
+            <div class="side-footer">
+              <button id="btnLang" class="btn">${state.lang === 'tr' ? '🌐 Dil: TR' : '🌐 Lang: EN'}</button>
+              <button id="btnSync" class="btn btn-warn">↻ ${esc(t('sync'))}</button>
+              <button id="btnStop" class="btn">${esc(t('stopServer'))}</button>
+              <div class="idle-note">${esc(t('idleNote'))}</div>
+            </div>
+          </aside>
+          <main class="main">
+            ${
+              state.view === 'tasks'
+                ? renderTasksView()
+                : state.view === 'cockpit'
+                  ? renderCockpitView()
+                  : state.view === 'memory'
+                    ? renderMemoryView()
+                    : renderSearchView()
+            }
+          </main>
+        </div>
+      `;
+
+      bindEvents();
+    }
+
+    function bindEvents() {
+      document.querySelectorAll('[data-nav]').forEach((b) => {
+        b.onclick = () => {
+          state.view = b.dataset.nav;
+          render();
+        };
+      });
+
+      document.getElementById('btnLang')?.addEventListener('click', async () => {
+        state.lang = state.lang === 'tr' ? 'en' : 'tr';
+        document.documentElement.lang = state.lang;
+        render();
+        await api('/api/prefs', { method: 'POST', body: JSON.stringify({ lang: state.lang }) }).catch(() => {});
+      });
+
+      document.getElementById('btnSync')?.addEventListener('click', () => loadState(false));
+
+      document.getElementById('btnStop')?.addEventListener('click', async () => {
+        await api('/api/shutdown', { method: 'POST' }).catch(() => {});
+        state.stopped = true;
+        render();
+      });
+
+      document.getElementById('projectSelect')?.addEventListener('change', (e) => {
+        state.selectedProject = e.target.value;
+        render();
+      });
+
+      document.getElementById('convSelect')?.addEventListener('change', (e) => {
+        state.selectedConvId = e.target.value;
+        loadState(true);
+      });
+
+      document.getElementById('quickTaskForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('qtTitle').value.trim();
+        const project = document.getElementById('qtProject').value.trim();
+        const priority = document.getElementById('qtPrio').value;
+        const status = document.getElementById('qtStatus').value;
+        if (!title) return;
+        await api('/api/tasks', {
+          method: 'POST',
+          body: JSON.stringify({ title, project, priority, status, lang: state.lang }),
+        });
+        showToast(t('toastSaved'));
+        await loadState(true);
+      });
+
+      document.querySelectorAll('[data-status-path]').forEach((sel) => {
+        sel.onchange = async () => {
+          await api('/api/tasks/status', {
+            method: 'POST',
+            body: JSON.stringify({ path: sel.dataset.statusPath, status: sel.value }),
+          });
+          showToast(t('toastSaved'));
+          await loadState(true);
+        };
+      });
+
+      document.querySelectorAll('[data-del-path]').forEach((btn) => {
+        btn.onclick = async () => {
+          await api('/api/note/delete', {
+            method: 'POST',
+            body: JSON.stringify({ path: btn.dataset.delPath }),
+          });
+          showToast(t('toastDeleted'));
+          await loadState(true);
+        };
+      });
+
+      document.querySelectorAll('[data-open-note]').forEach((el) => {
+        el.onclick = () => openNoteModal(el.dataset.openNote);
+      });
+
+      // Drag and drop between Kanban columns
+      document.querySelectorAll('[data-drag-path]').forEach((card) => {
+        card.addEventListener('dragstart', () => {
+          state.dragTaskPath = card.dataset.dragPath;
+        });
+      });
+
+      document.querySelectorAll('[data-drop-col]').forEach((col) => {
+        col.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          col.classList.add('drag-over');
+        });
+        col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+        col.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          col.classList.remove('drag-over');
+          const filePath = state.dragTaskPath;
+          state.dragTaskPath = null;
+          if (!filePath) return;
+          await api('/api/tasks/status', {
+            method: 'POST',
+            body: JSON.stringify({ path: filePath, status: col.dataset.dropCol }),
+          });
+          showToast(t('toastSaved'));
+          await loadState(true);
+        });
+      });
+
+      document.getElementById('searchForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        state.searchQuery = document.getElementById('searchInput').value.trim();
+        if (!state.searchQuery) {
+          state.searchResults = null;
+          render();
+          return;
+        }
+        const res = await api(`/api/search?q=${encodeURIComponent(state.searchQuery)}`);
+        state.searchResults = res.items || [];
+        render();
+      });
+    }
+
+    loadState(true).catch((err) => {
+      document.getElementById('app').innerHTML = `<div class="card" style="margin:24px;">Error: ${esc(err.message)}</div>`;
+    });
+  </script>
+</body>
+</html>

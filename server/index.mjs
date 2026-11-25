@@ -12,6 +12,7 @@ import {
 import { analyzeConversation, listConversations } from './transcript.mjs';
 import { ContextPackStore } from './packs.mjs';
 import { MemoryVault } from './vault.mjs';
+import { startWebServer } from './web.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,7 @@ const dataDir = parseDataDir(process.argv.slice(2));
 const packStore = new ContextPackStore(dataDir);
 const memoryVault = new MemoryVault();
 const prefsPath = path.join(dataDir, 'prefs.json');
+let activeWebServer = null;
 
 function readPrefs() {
   try {
@@ -310,17 +312,33 @@ const TOOLS = [
   {
     name: 'save_task',
     title: 'Save Task',
-    description: 'Oturumlar arası takip edilen yeni bir görev (tasks/) oluşturur.',
+    description: 'Create a cross-session task in tasks/ with optional project and Kanban status.',
     inputSchema: {
       type: 'object',
       properties: {
-        title: { type: 'string', description: 'Görev başlığı.' },
-        notes: { type: 'string', description: 'Görev detayları.' },
+        title: { type: 'string', description: 'Task title.' },
+        notes: { type: 'string', description: 'Task details.' },
+        project: { type: 'string', description: 'Optional project or conversation name.' },
+        status: { type: 'string', enum: ['inbox', 'active', 'waiting', 'done', 'cancelled'] },
         priority: { type: 'string', enum: ['high', 'normal', 'low', 'yuksek', 'dusuk'] },
         tags: { type: 'array', items: { type: 'string' } },
         lang: { type: 'string', enum: ['en', 'tr'] },
       },
       required: ['title'],
+    },
+    _meta: { ui: { visibility: ['model', 'app'] } },
+  },
+  {
+    name: 'update_task_status',
+    title: 'Update Task Status',
+    description: 'Move a task to one of the 5 Kanban columns: inbox, active, waiting, done, or cancelled.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Full path of the task file.' },
+        status: { type: 'string', enum: ['inbox', 'active', 'waiting', 'done', 'cancelled'] },
+      },
+      required: ['path', 'status'],
     },
     _meta: { ui: { visibility: ['model', 'app'] } },
   },
@@ -395,6 +413,13 @@ const TOOLS = [
       },
     },
     _meta: { ui: { visibility: ['app'] } },
+  },
+  {
+    name: 'open_web_ui',
+    title: 'Open Local Web UI',
+    description: 'Start (or reuse) the local 127.0.0.1 Context Brain Web Kanban & Cockpit server and return its URL.',
+    inputSchema: { type: 'object', properties: {} },
+    _meta: { ui: { visibility: ['model', 'app'] } },
   },
 ];
 
@@ -617,7 +642,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const item = memoryVault.toggleTask(args.path);
       const vault = memoryVault.list('all', 40);
       return {
-        content: [{ type: 'text', text: `Görev durumu güncellendi: ${item.title} -> ${item.status}` }],
+        content: [{ type: 'text', text: `Task status updated: ${item.title} -> ${item.status}` }],
+        structuredContent: { item, vault },
+      };
+    }
+
+    if (name === 'update_task_status') {
+      const item = memoryVault.updateTaskStatus(args.path, args.status);
+      const vault = memoryVault.list('all', 40);
+      return {
+        content: [{ type: 'text', text: `Task moved: ${item.title} -> ${item.status}` }],
         structuredContent: { item, vault },
       };
     }
@@ -664,6 +698,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return {
         content: [{ type: 'text', text: JSON.stringify(prefs) }],
         structuredContent: prefs,
+      };
+    }
+
+    if (name === 'open_web_ui') {
+      if (!activeWebServer) {
+        activeWebServer = await startWebServer({
+          dataDir,
+          onClose: () => {
+            activeWebServer = null;
+          },
+        });
+      }
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Context Brain Web is running locally at ${activeWebServer.url} (auto-closes after 30 min idle).`,
+          },
+        ],
+        structuredContent: { url: activeWebServer.url, port: activeWebServer.port },
       };
     }
 

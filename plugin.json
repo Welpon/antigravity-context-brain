@@ -1,7 +1,7 @@
 {
   "name": "context-brain",
   "displayName": "Context Brain",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Live context window & token monitor + portable Markdown memory vault (sessions, tasks, decisions, inbox, and multi-file context packs) for Antigravity. Supports English and Turkish.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [

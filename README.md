@@ -71,6 +71,12 @@ On first launch, the plugin automatically creates `~/Antigravity-Brain` (`sessio
 
 ---
 
+## Related Antigravity Plugins
+- **[Context Brain](https://github.com/Welpon/antigravity-context-brain)** — Live Context Monitor, Markdown Memory Vault, Kanban & Activity Log
+- **[Ship Guard](https://github.com/Welpon/antigravity-ship-guard)** — Git Flow, Safe Rollback, Secret Guard Hook, Quality Gate & GitHub Releases
+- **[Local Studio](https://github.com/Welpon/antigravity-local-studio)** — SQLite / PostgreSQL Explorer & Localhost API Tester
+- **[Project Studio](https://github.com/Welpon/antigravity-project-studio)** — Project Kickstart Scaffolder & Live UI Kit Previewer
+
 ## Contributing
 Pull requests and issues are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development and PR instructions.
 

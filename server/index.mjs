@@ -329,6 +329,25 @@ const TOOLS = [
     _meta: { ui: { visibility: ['model', 'app'] } },
   },
   {
+    name: 'update_task',
+    title: 'Update Task',
+    description: 'Edit an existing task title, notes/description, project, priority, or Kanban status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Full path of the task file.' },
+        title: { type: 'string', description: 'Updated task title.' },
+        notes: { type: 'string', description: 'Updated task description/notes.' },
+        project: { type: 'string', description: 'Updated project or chat name.' },
+        priority: { type: 'string', enum: ['high', 'normal', 'low'] },
+        status: { type: 'string', enum: ['inbox', 'active', 'waiting', 'done', 'cancelled'] },
+        lang: { type: 'string', enum: ['en', 'tr'] },
+      },
+      required: ['path'],
+    },
+    _meta: { ui: { visibility: ['model', 'app'] } },
+  },
+  {
     name: 'update_task_status',
     title: 'Update Task Status',
     description: 'Move a task to one of the 5 Kanban columns: inbox, active, waiting, done, or cancelled.',
@@ -643,6 +662,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const vault = memoryVault.list('all', 40);
       return {
         content: [{ type: 'text', text: `Task status updated: ${item.title} -> ${item.status}` }],
+        structuredContent: { item, vault },
+      };
+    }
+
+    if (name === 'update_task') {
+      const item = memoryVault.updateTask(args);
+      const vault = memoryVault.list('all', 40);
+      return {
+        content: [{ type: 'text', text: `Task updated: ${item.title}` }],
         structuredContent: { item, vault },
       };
     }

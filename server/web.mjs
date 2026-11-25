@@ -165,6 +165,13 @@ export function startWebServer({
         return;
       }
 
+      if (req.method === 'POST' && pathname === '/api/tasks/update') {
+        const body = await readBodyJson(req);
+        const item = vault.updateTask(body);
+        sendJson(res, 200, { item, vault: vault.list('all', 200) });
+        return;
+      }
+
       if (req.method === 'POST' && pathname === '/api/tasks/status') {
         const body = await readBodyJson(req);
         const item = vault.updateTaskStatus(body.path, body.status);

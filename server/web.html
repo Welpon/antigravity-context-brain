@@ -343,8 +343,14 @@
         projectLbl: 'Project / Chat',
         allProjects: 'All projects & chats',
         newTaskPh: 'New task title...',
+        newNotesPh: 'Short description (optional)...',
         projectPh: 'Project name (optional)',
         addBtn: '+ Add',
+        editTaskTitle: 'Edit Task',
+        saveBtn: 'Save',
+        cancelBtn: 'Cancel',
+        titleLbl: 'Title',
+        descLbl: 'Description',
         cols: {
           inbox: 'INBOX',
           active: 'ACTIVE',
@@ -405,8 +411,14 @@
         projectLbl: 'Proje / Sohbet',
         allProjects: 'Tüm projeler ve sohbetler',
         newTaskPh: 'Yeni görev başlığı...',
+        newNotesPh: 'Kısa açıklama (isteğe bağlı)...',
         projectPh: 'Proje / sohbet adı (isteğe bağlı)',
         addBtn: '+ Ekle',
+        editTaskTitle: 'Görevi Düzenle',
+        saveBtn: 'Kaydet',
+        cancelBtn: 'İptal',
+        titleLbl: 'Başlık',
+        descLbl: 'Açıklama',
         cols: {
           inbox: 'GELEN',
           active: 'AKTİF',
@@ -693,6 +705,70 @@
       }
     }
 
+    function openEditTaskModal(item) {
+      const projects = state.data?.projects || [];
+      document.getElementById('modalRoot').innerHTML = `
+        <div id="modalBackdrop" class="modal-backdrop">
+          <div class="modal" style="max-width:480px;">
+            <div class="modal-head">
+              <strong>${esc(t('editTaskTitle'))}</strong>
+              <button id="btnCloseModal" class="btn btn-sm">✕</button>
+            </div>
+            <form id="editTaskForm" style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+              <div>
+                <div style="font-size:11.5px;color:var(--fg-2);margin-bottom:4px;">${esc(t('titleLbl'))} *</div>
+                <input id="etTitle" class="input" style="width:100%;" required value="${esc(item.title)}" />
+              </div>
+              <div>
+                <div style="font-size:11.5px;color:var(--fg-2);margin-bottom:4px;">${esc(t('descLbl'))}</div>
+                <textarea id="etNotes" class="textarea" style="width:100%;min-height:84px;" placeholder="${esc(t('newNotesPh'))}">${esc(item.notes || '')}</textarea>
+              </div>
+              <div>
+                <div style="font-size:11.5px;color:var(--fg-2);margin-bottom:4px;">${esc(t('projectLbl'))}</div>
+                <input id="etProject" class="input" list="projDatalist" style="width:100%;" value="${esc(item.project || '')}" />
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <select id="etStatus" class="select">
+                  ${COL_ORDER.map((c) => `<option value="${c}" ${c === (item.status || 'inbox') ? 'selected' : ''}>${esc(t('cols')[c])}</option>`).join('')}
+                </select>
+                <select id="etPrio" class="select">
+                  <option value="normal" ${item.priority === 'normal' ? 'selected' : ''}>${esc(t('prio').normal)}</option>
+                  <option value="high" ${item.priority === 'high' ? 'selected' : ''}>${esc(t('prio').high)}</option>
+                  <option value="low" ${item.priority === 'low' ? 'selected' : ''}>${esc(t('prio').low)}</option>
+                </select>
+              </div>
+              <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+                <button type="button" id="btnCancelEdit" class="btn">${esc(t('cancelBtn'))}</button>
+                <button type="submit" class="btn btn-primary">${esc(t('saveBtn'))}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      const close = () => { document.getElementById('modalRoot').innerHTML = ''; };
+      document.getElementById('btnCloseModal').onclick = close;
+      document.getElementById('btnCancelEdit').onclick = close;
+      document.getElementById('modalBackdrop').onclick = (e) => { if (e.target.id === 'modalBackdrop') close(); };
+      document.getElementById('editTaskForm').onsubmit = async (e) => {
+        e.preventDefault();
+        await api('/api/tasks/update', {
+          method: 'POST',
+          body: JSON.stringify({
+            path: item.path,
+            title: document.getElementById('etTitle').value.trim(),
+            notes: document.getElementById('etNotes').value,
+            project: document.getElementById('etProject').value.trim(),
+            status: document.getElementById('etStatus').value,
+            priority: document.getElementById('etPrio').value,
+            lang: state.lang,
+          }),
+        });
+        close();
+        showToast(t('toastSaved'));
+        await loadState(true);
+      };
+    }
+
     function renderTasksView() {
       const items = (state.data?.vault?.items || []).filter((i) => i.kind === 'task');
       const projects = state.data?.projects || [];
@@ -717,12 +793,14 @@
             return `
               <div class="task-card" draggable="true" data-drag-path="${esc(item.path)}">
                 <div class="task-title ${colId === 'done' || colId === 'cancelled' ? 'done' : ''}" data-open-note="${esc(item.path)}">${esc(item.title)}</div>
+                ${item.notes ? `<div style="font-size:11.5px;color:var(--fg-2);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(item.notes)}</div>` : ''}
                 <div class="task-meta">
                   <span class="proj-chip" title="${esc(item.project || '-')}">${item.project ? `#${esc(item.project)}` : '#general'}</span>
                   <span class="${prioClass}">${esc(prioText)}</span>
                 </div>
                 <div class="card-row">
                   <select class="status-select" data-status-path="${esc(item.path)}">${statusOpts}</select>
+                  <button class="del-icon" title="${esc(t('editTaskTitle'))}" data-edit-task="${esc(item.path)}">✎</button>
                   <button class="del-icon" title="Delete" data-del-path="${esc(item.path)}">🗑</button>
                 </div>
               </div>
@@ -757,8 +835,9 @@
         </div>
 
         <form id="quickTaskForm" class="toolbar">
-          <input id="qtTitle" class="input" style="flex:2;min-width:180px;" required placeholder="${esc(t('newTaskPh'))}" />
-          <input id="qtProject" class="input" list="projDatalist" style="flex:1;min-width:150px;" placeholder="${esc(t('projectPh'))}" value="${state.selectedProject !== '__all__' ? esc(state.selectedProject) : ''}" />
+          <input id="qtTitle" class="input" style="flex:2;min-width:160px;" required placeholder="${esc(t('newTaskPh'))}" />
+          <input id="qtNotes" class="input" style="flex:2;min-width:160px;" placeholder="${esc(t('newNotesPh'))}" />
+          <input id="qtProject" class="input" list="projDatalist" style="flex:1;min-width:130px;" placeholder="${esc(t('projectPh'))}" value="${state.selectedProject !== '__all__' ? esc(state.selectedProject) : ''}" />
           <datalist id="projDatalist">
             ${projects.map((p) => `<option value="${esc(p.label)}"></option>`).join('')}
           </datalist>
@@ -1068,16 +1147,24 @@
       document.getElementById('quickTaskForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const title = document.getElementById('qtTitle').value.trim();
+        const notes = document.getElementById('qtNotes').value.trim();
         const project = document.getElementById('qtProject').value.trim();
         const priority = document.getElementById('qtPrio').value;
         const status = document.getElementById('qtStatus').value;
         if (!title) return;
         await api('/api/tasks', {
           method: 'POST',
-          body: JSON.stringify({ title, project, priority, status, lang: state.lang }),
+          body: JSON.stringify({ title, notes, project, priority, status, lang: state.lang }),
         });
         showToast(t('toastSaved'));
         await loadState(true);
+      });
+
+      document.querySelectorAll('[data-edit-task]').forEach((btn) => {
+        btn.onclick = () => {
+          const item = (state.data?.vault?.items || []).find((i) => i.path === btn.dataset.editTask);
+          if (item) openEditTaskModal(item);
+        };
       });
 
       document.querySelectorAll('[data-status-path]').forEach((sel) => {

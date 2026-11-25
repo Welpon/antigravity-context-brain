@@ -246,6 +246,9 @@ export class MemoryVault {
       .trim()
       .slice(0, 140);
 
+    const notesMatch = body.match(/^##\s+(?:Notlar|Notes)\r?\n([\s\S]*)$/m);
+    const notes = notesMatch ? notesMatch[1].trim() : '';
+
     return {
       path: filePath,
       fileUri: toFileUri(filePath),
@@ -258,6 +261,7 @@ export class MemoryVault {
       sourceType: meta.source_type || '',
       sourceUrl: meta.source_url || '',
       title,
+      notes,
       tags: meta.tags ? meta.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
       preview,
       tokens: estimateTokens(raw),
@@ -428,6 +432,48 @@ export class MemoryVault {
 
     fs.writeFileSync(filePath, content, 'utf8');
     return this._readItem(filePath);
+  }
+
+  updateTask({ path: filePath, title, notes, project, priority, status, lang = 'en' }) {
+    const resolved = path.resolve(String(filePath || ''));
+    const vaultResolved = path.resolve(this.vaultDir);
+    if (!resolved.startsWith(vaultResolved) || !fs.existsSync(resolved)) {
+      throw new Error('Task file not found.');
+    }
+    const existingRaw = fs.readFileSync(resolved, 'utf8');
+    const { meta } = parseFrontmatter(existingRaw);
+    const existingItem = this._readItem(resolved);
+
+    const isTr = lang === 'tr';
+    const cleanTitle = String(title ?? existingItem.title).trim();
+    if (!cleanTitle) throw new Error('Task title cannot be empty.');
+    const cleanStatus = normalizeTaskStatus(status ?? existingItem.status);
+    const cleanPriority = String(priority ?? existingItem.priority ?? 'normal').trim();
+    const cleanProject = String(project ?? existingItem.project ?? '').trim();
+    const cleanNotes = String(notes ?? existingItem.notes ?? '').trim();
+    const createdAt = meta.created_at || new Date().toISOString();
+    const tagStr = meta.tags || '';
+
+    const content = [
+      '---',
+      `type: task`,
+      `status: "${cleanStatus}"`,
+      `priority: "${cleanPriority}"`,
+      ...(cleanProject ? [`project: "${cleanProject.replace(/"/g, '\\"')}"`] : []),
+      `title: "${cleanTitle.replace(/"/g, '\\"')}"`,
+      `created_at: "${createdAt}"`,
+      ...(tagStr ? [`tags: "${tagStr}"`] : []),
+      '---',
+      '',
+      `# ${cleanTitle}`,
+      '',
+      `- [${cleanStatus === 'done' ? 'x' : ' '}] ${cleanTitle}`,
+      '',
+      ...(cleanNotes ? [isTr ? '## Notlar' : '## Notes', cleanNotes, ''] : []),
+    ].join('\n');
+
+    fs.writeFileSync(resolved, content, 'utf8');
+    return this._readItem(resolved);
   }
 
   updateTaskStatus(filePath, nextStatusRaw) {

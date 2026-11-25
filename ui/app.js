@@ -120,6 +120,7 @@ const I18N = {
     kindPack: 'Paket',
     kindNote: 'Not',
     taskFormTitle: 'Yeni Görev (Oturumlar Arası)',
+    taskEditFormTitle: 'Görevi Düzenle',
     taskTitleLbl: 'Görev Başlığı *',
     taskTitlePh: 'Örn: İlk taslağı hazırla',
     taskProjectLbl: 'Proje / Sohbet',
@@ -286,6 +287,7 @@ const I18N = {
     kindPack: 'Pack',
     kindNote: 'Note',
     taskFormTitle: 'New Task (Cross-Session)',
+    taskEditFormTitle: 'Edit Task',
     taskTitleLbl: 'Task Title *',
     taskTitlePh: 'e.g. Prepare initial draft',
     taskProjectLbl: 'Project / Chat',
@@ -360,6 +362,7 @@ const state = {
   breakdownOpen: true,
   expandedSpikes: new Set(),
   editingPackId: null,
+  editingTaskPath: null,
   showPackForm: false,
   attachedPackName: null,
   loading: false,
@@ -801,9 +804,20 @@ async function handleSaveTask(e) {
     return;
   }
   try {
-    const res = await callTool('save_task', { title, project, status, priority, notes, lang: state.lang });
+    const res = state.editingTaskPath
+      ? await callTool('update_task', {
+          path: state.editingTaskPath,
+          title,
+          project,
+          status,
+          priority,
+          notes,
+          lang: state.lang,
+        })
+      : await callTool('save_task', { title, project, status, priority, notes, lang: state.lang });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
+    state.editingTaskPath = null;
     state.vaultSearchResults = null;
     showToast(t('toastTaskSaved'));
     render();
@@ -1684,17 +1698,20 @@ function renderMemory() {
       </div>
     `;
   } else if (state.vaultForm === 'task') {
+    const editingTask = state.editingTaskPath
+      ? (v?.items || []).find((i) => i.path === state.editingTaskPath)
+      : null;
     formHtml = `
       <div class="card">
-        <div class="sec-head"><h3 class="sec-title">${esc(t('taskFormTitle'))}</h3></div>
+        <div class="sec-head"><h3 class="sec-title">${esc(editingTask ? t('taskEditFormTitle') : t('taskFormTitle'))}</h3></div>
         <form id="taskForm" class="form-grid">
           <div class="field">
             <label for="taskTitle">${esc(t('taskTitleLbl'))}</label>
-            <input id="taskTitle" name="taskTitle" class="input" required placeholder="${esc(t('taskTitlePh'))}" />
+            <input id="taskTitle" name="taskTitle" class="input" required placeholder="${esc(t('taskTitlePh'))}" value="${esc(editingTask?.title || '')}" />
           </div>
           <div class="field">
             <label for="taskProject">${esc(t('taskProjectLbl'))}</label>
-            <input id="taskProject" name="taskProject" list="taskProjList" class="input" placeholder="${esc(t('taskProjectPh'))}" value="${esc(defaultTaskProj)}" />
+            <input id="taskProject" name="taskProject" list="taskProjList" class="input" placeholder="${esc(t('taskProjectPh'))}" value="${esc(editingTask ? editingTask.project || '' : defaultTaskProj)}" />
             <datalist id="taskProjList">
               ${projectList.map((p) => `<option value="${esc(p)}"></option>`).join('')}
             </datalist>
@@ -1703,21 +1720,21 @@ function renderMemory() {
             <div class="field">
               <label for="taskStatus">${esc(t('taskStatusLbl'))}</label>
               <select id="taskStatus" name="taskStatus" class="input">
-                ${TASK_COLS.map((c) => `<option value="${c.id}">${esc(c.label)}</option>`).join('')}
+                ${TASK_COLS.map((c) => `<option value="${c.id}" ${(editingTask?.status || 'inbox') === c.id ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}
               </select>
             </div>
             <div class="field">
               <label for="taskPriority">${esc(t('taskPriorityLbl'))}</label>
               <select id="taskPriority" name="taskPriority" class="input">
-                <option value="normal">${state.lang === 'tr' ? 'Normal' : 'Normal'}</option>
-                <option value="high">${state.lang === 'tr' ? 'Yüksek' : 'High'}</option>
-                <option value="low">${state.lang === 'tr' ? 'Düşük' : 'Low'}</option>
+                <option value="normal" ${(editingTask?.priority || 'normal') === 'normal' ? 'selected' : ''}>${state.lang === 'tr' ? 'Normal' : 'Normal'}</option>
+                <option value="high" ${editingTask?.priority === 'high' ? 'selected' : ''}>${state.lang === 'tr' ? 'Yüksek' : 'High'}</option>
+                <option value="low" ${editingTask?.priority === 'low' ? 'selected' : ''}>${state.lang === 'tr' ? 'Düşük' : 'Low'}</option>
               </select>
             </div>
           </div>
           <div class="field">
             <label for="taskNotes">${esc(t('taskNotesLbl'))}</label>
-            <textarea id="taskNotes" name="taskNotes" class="textarea" placeholder="${esc(t('taskNotesPh'))}"></textarea>
+            <textarea id="taskNotes" name="taskNotes" class="textarea" placeholder="${esc(t('taskNotesPh'))}">${esc(editingTask?.notes || '')}</textarea>
           </div>
           <div class="form-actions">
             <button type="button" id="btnCancelVaultForm" class="btn">${esc(t('cancel'))}</button>
@@ -1788,9 +1805,10 @@ function renderMemory() {
               </div>
               <span class="badge">~${fmtCompact(item.tokens)}</span>
             </div>
-            ${item.snippet || item.preview ? `<div class="note-preview">${esc(item.snippet || item.preview)}</div>` : ''}
+            ${item.kind === 'task' && item.notes ? `<div class="note-preview">${esc(item.notes)}</div>` : item.snippet || item.preview ? `<div class="note-preview">${esc(item.snippet || item.preview)}</div>` : ''}
             <div class="pack-actions">
               ${taskStatusSelect}
+              ${item.kind === 'task' ? `<button class="btn btn-sm" data-vaction="editTask" data-path="${esc(item.path)}">${esc(t('editBtn'))}</button>` : ''}
               <button class="btn btn-sm" data-vaction="open" data-uri="${esc(item.fileUri)}">${esc(t('openFileBtn'))}</button>
               ${
                 canAttach
@@ -1963,6 +1981,7 @@ function bindEvents() {
   });
   document.getElementById('btnFormTask')?.addEventListener('click', () => {
     state.editingPackId = null;
+    state.editingTaskPath = null;
     state.vaultForm = state.vaultForm === 'task' ? null : 'task';
     render();
   });
@@ -1984,6 +2003,7 @@ function bindEvents() {
   document.getElementById('btnCancelVaultForm')?.addEventListener('click', () => {
     state.vaultForm = null;
     state.editingPackId = null;
+    state.editingTaskPath = null;
     render();
   });
 
@@ -2020,7 +2040,12 @@ function bindEvents() {
   document.querySelectorAll('[data-vaction]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const { vaction, uri, path: filePath, title } = btn.dataset;
-      if (vaction === 'open') handleOpenVaultFile(uri);
+      if (vaction === 'editTask') {
+        state.editingTaskPath = filePath;
+        state.vaultForm = 'task';
+        render();
+        window.scrollTo(0, 0);
+      } else if (vaction === 'open') handleOpenVaultFile(uri);
       else if (vaction === 'attach') handleAttachVaultNote(filePath, title);
       else if (vaction === 'send') handleSendVaultNote(filePath, title);
       else if (vaction === 'delete') handleDeleteVaultNote(filePath);

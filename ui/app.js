@@ -625,6 +625,10 @@ app.ontoolresult = (result) => {
     if (sc.vault) {
       state.vault = sc.vault;
     }
+    if (sc.prefs?.lang === 'tr' || sc.prefs?.lang === 'en') {
+      state.lang = sc.prefs.lang;
+      document.documentElement.lang = state.lang;
+    }
   }
   render();
 };
@@ -701,7 +705,7 @@ async function handleSaveHandoff(e) {
     return;
   }
   try {
-    const res = await callTool('save_handoff', { title, summary, openItems, nextStep });
+    const res = await callTool('save_handoff', { title, summary, openItems, nextStep, lang: state.lang });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
     state.vaultSearchResults = null;
@@ -727,7 +731,7 @@ async function handleSaveDecision(e) {
     return;
   }
   try {
-    const res = await callTool('save_decision', { title, decision, rationale, tags });
+    const res = await callTool('save_decision', { title, decision, rationale, tags, lang: state.lang });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
     state.vaultSearchResults = null;
@@ -750,7 +754,7 @@ async function handleCaptureResource(e) {
     return;
   }
   try {
-    const res = await callTool('capture_resource', { title, sourceType, urlOrPath, notes });
+    const res = await callTool('capture_resource', { title, sourceType, urlOrPath, notes, lang: state.lang });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
     state.vaultSearchResults = null;
@@ -772,7 +776,7 @@ async function handleSaveTask(e) {
     return;
   }
   try {
-    const res = await callTool('save_task', { title, priority, notes });
+    const res = await callTool('save_task', { title, priority, notes, lang: state.lang });
     if (res?.vault) state.vault = res.vault;
     state.vaultForm = null;
     state.vaultSearchResults = null;
@@ -912,6 +916,7 @@ function toggleLanguage() {
   state.lang = state.lang === 'tr' ? 'en' : 'tr';
   document.documentElement.lang = state.lang;
   render();
+  callTool('set_preferences', { lang: state.lang }).catch(() => {});
 }
 
 async function handleSavePack(e) {
@@ -1514,6 +1519,16 @@ function renderMemory() {
       ? []
       : (v?.items || []).filter((i) => state.vaultFilter === 'all' || i.kind === state.vaultFilter);
 
+  const localizeSourceType = (raw) => {
+    const k = String(raw || '').toLowerCase();
+    const isTr = state.lang === 'tr';
+    if (k === 'video') return 'Video';
+    if (k === 'article' || k === 'makale') return isTr ? 'Makale' : 'Article';
+    if (k === 'file' || k === 'dosya') return isTr ? 'Dosya' : 'File';
+    if (k === 'note' || k === 'not') return isTr ? 'Not' : 'Note';
+    return raw;
+  };
+
   const kindLabel = (k) => {
     if (k === 'handoff') return t('kindHandoff');
     if (k === 'decision') return t('kindDecision');
@@ -1598,9 +1613,9 @@ function renderMemory() {
             <label for="capType">${esc(t('captureTypeLbl'))}</label>
             <select id="capType" name="capType" class="input">
               <option value="video">Video</option>
-              <option value="makale">${state.lang === 'tr' ? 'Makale' : 'Article'}</option>
-              <option value="dosya">${state.lang === 'tr' ? 'Dosya' : 'File'}</option>
-              <option value="not">${state.lang === 'tr' ? 'Not' : 'Note'}</option>
+              <option value="article">${state.lang === 'tr' ? 'Makale' : 'Article'}</option>
+              <option value="file">${state.lang === 'tr' ? 'Dosya' : 'File'}</option>
+              <option value="note">${state.lang === 'tr' ? 'Not' : 'Note'}</option>
             </select>
           </div>
           <div class="field">
@@ -1635,8 +1650,8 @@ function renderMemory() {
             <label for="taskPriority">${esc(t('taskPriorityLbl'))}</label>
             <select id="taskPriority" name="taskPriority" class="input">
               <option value="normal">${state.lang === 'tr' ? 'Normal' : 'Normal'}</option>
-              <option value="yuksek">${state.lang === 'tr' ? 'Yüksek' : 'High'}</option>
-              <option value="dusuk">${state.lang === 'tr' ? 'Düşük' : 'Low'}</option>
+              <option value="high">${state.lang === 'tr' ? 'Yüksek' : 'High'}</option>
+              <option value="low">${state.lang === 'tr' ? 'Düşük' : 'Low'}</option>
             </select>
           </div>
           <div class="field">
@@ -1696,7 +1711,7 @@ function renderMemory() {
             <div class="pack-head">
               <div style="min-width:0;flex:1;">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-                  <span class="kind-badge kind-${esc(item.kind)}">${esc(item.sourceType || kindLabel(item.kind))}</span>
+                  <span class="kind-badge kind-${esc(item.kind)}">${esc(item.sourceType ? localizeSourceType(item.sourceType) : kindLabel(item.kind))}</span>
                   <h4 class="pack-name ${item.kind === 'task' && item.status === 'done' ? 'task-done' : ''}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.title)}</h4>
                 </div>
                 <div class="note-meta">
@@ -1972,6 +1987,17 @@ async function init() {
   applyThemeFromContext(app.getHostContext());
   startTimers();
   render();
+
+  try {
+    const prefs = await callTool('get_preferences', {});
+    if (prefs?.lang === 'tr' || prefs?.lang === 'en') {
+      state.lang = prefs.lang;
+      document.documentElement.lang = state.lang;
+      render();
+    }
+  } catch {
+    // Keep default language
+  }
 
   if (!state.analysis) {
     await Promise.allSettled([refreshMonitor(true), refreshPacks(), refreshVault('all')]);

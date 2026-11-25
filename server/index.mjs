@@ -36,6 +36,30 @@ function parseDataDir(argv) {
 const dataDir = parseDataDir(process.argv.slice(2));
 const packStore = new ContextPackStore(dataDir);
 const memoryVault = new MemoryVault();
+const prefsPath = path.join(dataDir, 'prefs.json');
+
+function readPrefs() {
+  try {
+    if (fs.existsSync(prefsPath)) {
+      const parsed = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
+      return { lang: parsed?.lang === 'tr' ? 'tr' : 'en' };
+    }
+  } catch {
+    // Fallback to default
+  }
+  return { lang: 'en' };
+}
+
+function writePrefs(patch = {}) {
+  const current = readPrefs();
+  const next = {
+    ...current,
+    ...(patch.lang === 'tr' || patch.lang === 'en' ? { lang: patch.lang } : {}),
+  };
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(prefsPath, JSON.stringify(next, null, 2), 'utf8');
+  return next;
+}
 
 function readAppHtml() {
   const htmlPath = process.env.CONTEXT_WINDOW_APP_HTML || path.join(__dirname, 'app.html');
@@ -273,10 +297,11 @@ const TOOLS = [
       type: 'object',
       properties: {
         title: { type: 'string', description: 'Kaynak başlığı.' },
-        sourceType: { type: 'string', enum: ['video', 'makale', 'dosya', 'not'] },
-        urlOrPath: { type: 'string', description: 'URL veya yerel dosya yolu.' },
-        notes: { type: 'string', description: 'Kısa notlar.' },
+        sourceType: { type: 'string', enum: ['video', 'article', 'file', 'note', 'makale', 'dosya', 'not'] },
+        urlOrPath: { type: 'string', description: 'URL or local file path.' },
+        notes: { type: 'string', description: 'Short notes.' },
         tags: { type: 'array', items: { type: 'string' } },
+        lang: { type: 'string', enum: ['en', 'tr'] },
       },
       required: ['title'],
     },
@@ -291,8 +316,9 @@ const TOOLS = [
       properties: {
         title: { type: 'string', description: 'Görev başlığı.' },
         notes: { type: 'string', description: 'Görev detayları.' },
-        priority: { type: 'string', enum: ['yuksek', 'normal', 'dusuk'] },
+        priority: { type: 'string', enum: ['high', 'normal', 'low', 'yuksek', 'dusuk'] },
         tags: { type: 'array', items: { type: 'string' } },
+        lang: { type: 'string', enum: ['en', 'tr'] },
       },
       required: ['title'],
     },
@@ -341,15 +367,34 @@ const TOOLS = [
   {
     name: 'delete_vault_note',
     title: 'Delete Vault Note',
-    description: 'Hafıza kasasındaki bir Markdown dosyasını siler.',
+    description: 'Delete a Markdown file from the memory vault.',
     inputSchema: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Silinecek dosyanın tam yolu.' },
+        path: { type: 'string', description: 'Full path of the file to delete.' },
       },
       required: ['path'],
     },
     _meta: { ui: { visibility: ['model', 'app'] } },
+  },
+  {
+    name: 'get_preferences',
+    title: 'Get Preferences',
+    description: 'Read persisted UI preferences such as selected language.',
+    inputSchema: { type: 'object', properties: {} },
+    _meta: { ui: { visibility: ['app'] } },
+  },
+  {
+    name: 'set_preferences',
+    title: 'Set Preferences',
+    description: 'Persist UI preferences such as selected language (en or tr).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        lang: { type: 'string', enum: ['en', 'tr'] },
+      },
+    },
+    _meta: { ui: { visibility: ['app'] } },
   },
 ];
 
@@ -414,18 +459,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const analysis = analyzeConversation(args.conversation_id, args.context_limit);
       const packs = packStore.list();
       const vault = memoryVault.list('all', 40);
+      const prefs = readPrefs();
       const validTabs = new Set(['monitor', 'packs', 'memory']);
       const structured = {
         activeTab: validTabs.has(args.tab) ? args.tab : 'monitor',
         analysis,
         packs,
         vault,
+        prefs,
       };
       return {
         content: [
           {
             type: 'text',
-            text: `${buildUsageSummaryText(analysis)}\nKayıtlı bağlam paketi: ${packs.length} | Hafıza notu: ${vault.counts.all}`,
+            text: `${buildUsageSummaryText(analysis)}\nContext packs: ${packs.length} | Vault notes: ${vault.counts.all}`,
           },
         ],
         structuredContent: structured,
@@ -599,14 +646,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const deleted = memoryVault.deleteNote(args.path);
       const vault = memoryVault.list('all', 40);
       return {
-        content: [{ type: 'text', text: deleted ? 'Not silindi.' : 'Not bulunamadı.' }],
+        content: [{ type: 'text', text: deleted ? 'Note deleted.' : 'Note not found.' }],
         structuredContent: { deleted, vault },
+      };
+    }
+
+    if (name === 'get_preferences') {
+      const prefs = readPrefs();
+      return {
+        content: [{ type: 'text', text: JSON.stringify(prefs) }],
+        structuredContent: prefs,
+      };
+    }
+
+    if (name === 'set_preferences') {
+      const prefs = writePrefs(args);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(prefs) }],
+        structuredContent: prefs,
       };
     }
 
     return {
       isError: true,
-      content: [{ type: 'text', text: `Bilinmeyen araç: ${name}` }],
+      content: [{ type: 'text', text: `Unknown tool: ${name}` }],
     };
   } catch (err) {
     return {

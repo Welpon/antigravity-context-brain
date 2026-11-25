@@ -288,9 +288,10 @@ export class MemoryVault {
     };
   }
 
-  saveHandoff({ title, summary = '', openItems = '', nextStep = '', tags = [] }) {
+  saveHandoff({ title, summary = '', openItems = '', nextStep = '', tags = [], lang = 'en' }) {
     this.ensureStructure();
-    const cleanTitle = String(title || '').trim() || `Oturum Notu ${dateStamp()}`;
+    const isTr = lang === 'tr';
+    const cleanTitle = String(title || '').trim() || `${isTr ? 'Oturum Notu' : 'Session Handoff'} ${dateStamp()}`;
     const filename = `${dateStamp()}-${timeStamp()}-${slugify(cleanTitle)}.md`;
     const filePath = path.join(this.vaultDir, SUBDIRS.handoff, filename);
     const tagStr = Array.isArray(tags) ? tags.join(', ') : String(tags || '');
@@ -305,13 +306,13 @@ export class MemoryVault {
       '',
       `# ${cleanTitle}`,
       '',
-      '## Son İşin Sonucu',
+      isTr ? '## Son İşin Sonucu' : '## Outcome / Summary',
       summary.trim() || '-',
       '',
-      '## Açık Konular',
+      isTr ? '## Açık Konular' : '## Open Items',
       openItems.trim() || '-',
       '',
-      '## Sonraki Adım',
+      isTr ? '## Sonraki Adım' : '## Next Step',
       nextStep.trim() || '-',
       '',
     ].join('\n');
@@ -320,10 +321,11 @@ export class MemoryVault {
     return this._readItem(filePath);
   }
 
-  saveDecision({ title, decision = '', rationale = '', tags = [] }) {
+  saveDecision({ title, decision = '', rationale = '', tags = [], lang = 'en' }) {
     this.ensureStructure();
+    const isTr = lang === 'tr';
     const cleanTitle = String(title || '').trim();
-    if (!cleanTitle) throw new Error('Karar başlığı boş olamaz.');
+    if (!cleanTitle) throw new Error('Decision title cannot be empty.');
     const filename = `${dateStamp()}-${timeStamp()}-${slugify(cleanTitle)}.md`;
     const filePath = path.join(this.vaultDir, SUBDIRS.decision, filename);
     const tagStr = Array.isArray(tags) ? tags.join(', ') : String(tags || '');
@@ -338,10 +340,10 @@ export class MemoryVault {
       '',
       `# ${cleanTitle}`,
       '',
-      '## Alınan Karar',
+      isTr ? '## Alınan Karar' : '## Decision',
       decision.trim() || '-',
       '',
-      '## Gerekçe / Bağlam',
+      isTr ? '## Gerekçe / Bağlam' : '## Rationale / Context',
       rationale.trim() || '-',
       '',
     ].join('\n');
@@ -350,17 +352,19 @@ export class MemoryVault {
     return this._readItem(filePath);
   }
 
-  captureResource({ title, sourceType = 'not', urlOrPath = '', notes = '', tags = [] }) {
+  captureResource({ title, sourceType = 'note', urlOrPath = '', notes = '', tags = [], lang = 'en' }) {
     this.ensureStructure();
-    const cleanTitle = String(title || '').trim() || `Yakalanan Kaynak ${dateStamp()}`;
+    const isTr = lang === 'tr';
+    const cleanTitle = String(title || '').trim() || `${isTr ? 'Yakalanan Kaynak' : 'Captured Resource'} ${dateStamp()}`;
     const filename = `${dateStamp()}-${timeStamp()}-${slugify(cleanTitle)}.md`;
     const filePath = path.join(this.vaultDir, SUBDIRS.inbox, filename);
     const tagStr = Array.isArray(tags) ? tags.join(', ') : String(tags || '');
+    const normType = String(sourceType || 'note').trim().toLowerCase();
 
     const content = [
       '---',
       `type: inbox`,
-      `source_type: "${String(sourceType || 'not').trim()}"`,
+      `source_type: "${normType}"`,
       ...(urlOrPath ? [`source_url: "${String(urlOrPath).trim().replace(/"/g, '\\"')}"`] : []),
       `title: "${cleanTitle.replace(/"/g, '\\"')}"`,
       `created_at: "${new Date().toISOString()}"`,
@@ -369,8 +373,8 @@ export class MemoryVault {
       '',
       `# ${cleanTitle}`,
       '',
-      ...(urlOrPath ? [`**Kaynak (${sourceType}):** ${urlOrPath.trim()}`, ''] : []),
-      '## Notlar',
+      ...(urlOrPath ? [`**${isTr ? 'Kaynak' : 'Source'} (${normType}):** ${urlOrPath.trim()}`, ''] : []),
+      isTr ? '## Notlar' : '## Notes',
       notes.trim() || '-',
       '',
     ].join('\n');
@@ -379,10 +383,11 @@ export class MemoryVault {
     return this._readItem(filePath);
   }
 
-  saveTask({ title, notes = '', priority = 'normal', status = 'open', tags = [] }) {
+  saveTask({ title, notes = '', priority = 'normal', status = 'open', tags = [], lang = 'en' }) {
     this.ensureStructure();
+    const isTr = lang === 'tr';
     const cleanTitle = String(title || '').trim();
-    if (!cleanTitle) throw new Error('Görev başlığı boş olamaz.');
+    if (!cleanTitle) throw new Error('Task title cannot be empty.');
     const filename = `${dateStamp()}-${timeStamp()}-${slugify(cleanTitle)}.md`;
     const filePath = path.join(this.vaultDir, SUBDIRS.task, filename);
     const tagStr = Array.isArray(tags) ? tags.join(', ') : String(tags || '');
@@ -402,7 +407,7 @@ export class MemoryVault {
       '',
       `- [${cleanStatus === 'done' ? 'x' : ' '}] ${cleanTitle}`,
       '',
-      ...(notes.trim() ? ['## Notlar', notes.trim(), ''] : []),
+      ...(notes.trim() ? [isTr ? '## Notlar' : '## Notes', notes.trim(), ''] : []),
     ].join('\n');
 
     fs.writeFileSync(filePath, content, 'utf8');
@@ -413,7 +418,7 @@ export class MemoryVault {
     const resolved = path.resolve(String(filePath || ''));
     const vaultResolved = path.resolve(this.vaultDir);
     if (!resolved.startsWith(vaultResolved) || !fs.existsSync(resolved)) {
-      throw new Error('Görev dosyası bulunamadı.');
+      throw new Error('Task file not found.');
     }
     let raw = fs.readFileSync(resolved, 'utf8');
     const isCurrentlyDone = /^status:\s*["']?done["']?/m.test(raw);
@@ -499,10 +504,10 @@ export class MemoryVault {
     const resolved = path.resolve(String(filePath || ''));
     const vaultResolved = path.resolve(this.vaultDir);
     if (!resolved.startsWith(vaultResolved)) {
-      throw new Error('Yalnızca hafıza kasası içindeki dosyalar okunabilir.');
+      throw new Error('Only files inside the memory vault can be read.');
     }
     if (!fs.existsSync(resolved)) {
-      throw new Error('Dosya bulunamadı.');
+      throw new Error('File not found.');
     }
     const raw = fs.readFileSync(resolved, 'utf8');
     const item = this._readItem(resolved);
@@ -513,7 +518,7 @@ export class MemoryVault {
     const resolved = path.resolve(String(filePath || ''));
     const vaultResolved = path.resolve(this.vaultDir);
     if (!resolved.startsWith(vaultResolved)) {
-      throw new Error('Yalnızca hafıza kasası içindeki dosyalar silinebilir.');
+      throw new Error('Only files inside the memory vault can be deleted.');
     }
     if (!fs.existsSync(resolved)) return false;
     fs.unlinkSync(resolved);
